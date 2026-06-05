@@ -16,19 +16,20 @@ func sendMessage() string {
 }
 
 func msgSender() {
+	//send over the tcp protocol
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		fmt.Printf("%s", err.Error())
+	}
+	defer conn.Close()
 	for {
 
 		msgToSend := sendMessage()
 		if msgToSend == "exit()" {
 			return
 		}
-		//send over the tcp protocol
-		conn, err := net.Dial("tcp", "localhost:8080")
-		if err != nil {
-			fmt.Printf(err.Error())
-		}
-		fmt.Printf(msgToSend)
-		defer conn.Close()
+		fmt.Printf("%s", msgToSend)
+		fmt.Fprintf(conn, "%s", msgToSend)
 
 	}
 
