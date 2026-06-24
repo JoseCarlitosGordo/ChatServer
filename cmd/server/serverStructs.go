@@ -10,7 +10,7 @@ type UserAccount struct {
 	Description string
 }
 type ConnectionList struct {
-	key            sync.Mutex
+	key            sync.RWMutex
 	connectionList map[net.Conn]bool
 }
 

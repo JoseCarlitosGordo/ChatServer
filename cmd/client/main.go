@@ -22,7 +22,7 @@ func receiveMessages(connection net.Conn) {
 		}
 		msg := buffer[:bytesRead]
 		// 1. Move cursor up 1 line
-		fmt.Println("\033[2A")
+		//fmt.Println("\033[2A")
 		fmt.Printf("%v \n", string(msg))
 
 	}
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	fmt.Println("\n(Type 'exit()' to close this app)")
-	fmt.Print("\n Type in your msg here to send your shit to friends:  ")
+	fmt.Print("\n Type in your msg to send stuff to friends! \n")
 	defer conn.Close()
 
 	for {
