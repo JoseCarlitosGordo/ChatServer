@@ -6,6 +6,8 @@ import (
 )
 
 type UserAccount struct {
+	UserName    string
+	Description string
 }
 type ConnectionList struct {
 	key            sync.Mutex

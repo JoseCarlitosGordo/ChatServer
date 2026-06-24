@@ -38,6 +38,8 @@ func main() {
 func SendMessages(msgChannel chan string, ListConnections *ConnectionList) {
 
 	newMsg := <-msgChannel
+	ListConnections.key.Lock()
+	defer ListConnections.key.Unlock()
 	for conn := range ListConnections.connectionList {
 		fmt.Fprintf(conn, "%s", newMsg)
 	}
