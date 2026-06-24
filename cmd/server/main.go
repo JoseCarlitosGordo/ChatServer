@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 )
 
 func main() {
-	var key sync.Mutex
-	connectionsList := []net.Conn{}
+	ListConnections := ConnectionList{connectionList: map[net.Conn]bool{}}
 	msgChannel := make(chan string)
 	// newUserChannel := make(chan net.Conn)
-	go SendMessages(msgChannel)
+
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		fmt.Printf("%s", err.Error())
@@ -27,26 +25,27 @@ func main() {
 			fmt.Printf("%s", err.Error())
 			continue
 		}
-		connectionsList = append(connectionsList, connection)
+		ListConnections.addConnection(connection)
 
-		go handleConnections(connection, msgChannel, key)
+		go handleConnections(connection, msgChannel, &ListConnections)
+		go SendMessages(msgChannel, &ListConnections)
 
 	}
 
 }
 
 // Receives messages from a msg channel and sends them over.
-func SendMessages(msgChannel chan string) {
+func SendMessages(msgChannel chan string, ListConnections *ConnectionList) {
 
-	for {
-		// newMsg := <-msgChannel
-
+	newMsg := <-msgChannel
+	for conn := range ListConnections.connectionList {
+		fmt.Fprintf(conn, "%s", newMsg)
 	}
 
 }
 
 // Listens for new messages coming from a particular client
-func handleConnections(sender net.Conn, msgChannel chan string, key sync.Mutex) {
+func handleConnections(sender net.Conn, msgChannel chan string, connectionList *ConnectionList) {
 
 	for {
 		buffer := make([]byte, 1024)
@@ -57,9 +56,7 @@ func handleConnections(sender net.Conn, msgChannel chan string, key sync.Mutex) 
 			} else {
 				fmt.Printf("Connection closed abruptly or failed with error: %v\n", err)
 			}
-			key.Lock()
-
-			key.Unlock()
+			connectionList.removeConnection(sender)
 			return
 		}
 		msg := buffer[:bytesRead]
@@ -72,5 +69,3 @@ func handleConnections(sender net.Conn, msgChannel chan string, key sync.Mutex) 
 	}
 
 }
-
-//TODO: Make use of channels

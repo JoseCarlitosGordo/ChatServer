@@ -11,6 +11,7 @@ func receiveMessages(connection net.Conn) {
 	for {
 		buffer := make([]byte, 1024)
 		bytesRead, err := connection.Read(buffer)
+		//if server goes down
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				fmt.Println("Connection closed gracefully by the remote peer.")
@@ -38,6 +39,7 @@ func main() {
 	fmt.Println("\n(Type 'exit()' to close this app)")
 	fmt.Print("\n Type in your msg here to send your shit to friends:  ")
 	defer conn.Close()
+
 	for {
 
 		go receiveMessages(conn)
