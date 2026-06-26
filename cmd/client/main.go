@@ -23,10 +23,12 @@ func receiveMessages(connection net.Conn) {
 		msg := buffer[:bytesRead]
 		// 1. Move cursor up 1 line
 		//fmt.Println("\033[2A")
+		fmt.Print("\033[1B")
 		fmt.Printf("%v \n", string(msg))
 
 	}
 }
+
 func main() {
 	//send over the tcp protocol
 	conn, err := net.Dial("tcp", "localhost:8080")
@@ -35,9 +37,19 @@ func main() {
 		fmt.Printf("%s", err.Error())
 		return
 	}
+	loggedIn, err := CommenceAuthenticationProcess(conn)
+	if err != nil {
+		fmt.Printf("%s", err.Error())
+		return
+	}
+	if loggedIn {
+		//TODO: send login details
+		//conn.Write()
+	}
 
 	fmt.Println("\n(Type 'exit()' to close this app)")
 	fmt.Print("\n Type in your msg to send stuff to friends! \n")
+
 	defer conn.Close()
 
 	for {

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 )
 
@@ -19,4 +20,20 @@ func sendMessage() string {
 	fmt.Print("\r")
 
 	return message
+}
+
+func CommenceAuthenticationProcess(connection net.Conn) (bool, error) {
+	//TODO:: Prompt for login, sign up or guest. Then
+	msgScanner := bufio.NewScanner(os.Stdin)
+	fmt.Print("1. To Log in, press '1' \n 2. To Sign Up, press '2' \n To register as a guest, press any other key ")
+	msgScanner.Scan()
+	input := msgScanner.Text()
+	if input == "1" {
+		//return LoginProcess()
+	}
+	if input == "2" {
+		//return SignUpProcess()
+	}
+	return false, nil
+
 }

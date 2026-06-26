@@ -8,6 +8,8 @@ import (
 type UserAccount struct {
 	UserName    string
 	Description string
+	Password    string
+	salt        string
 }
 type ConnectionList struct {
 	key            sync.RWMutex
