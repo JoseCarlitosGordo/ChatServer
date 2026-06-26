@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+
 	ListConnections := ConnectionList{connectionList: map[net.Conn]bool{}}
 	msgChannel := make(chan string)
 	// newUserChannel := make(chan net.Conn)
