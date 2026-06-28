@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	ListConnections := extras.ConnectionList{Connections: map[net.Conn]bool{}}
+	listConnections := extras.ConnectionList{Connections: map[net.Conn]bool{}}
 	msgChannel := make(chan string)
 	// newUserChannel := make(chan net.Conn)
 
@@ -19,10 +19,11 @@ func main() {
 		fmt.Printf("%s", err.Error())
 		return
 	}
+	serverState := extras.Server{Listener: listener, MsgChannel: msgChannel, ListConnections: &listConnections}
 	fmt.Println("Session started")
 	defer listener.Close()
 	//Separate goroutine for msg sending. ListConnections is updated automatically.
-	go SendMessages(msgChannel, &ListConnections)
+	go SendMessages(&serverState)
 	for {
 		//Listen for a speciic connection. If no other connection comes it just waits forever.
 		connection, err := listener.Accept()
@@ -30,30 +31,30 @@ func main() {
 			fmt.Printf("%s", err.Error())
 			continue
 		}
-		ListConnections.AddConnection(connection)
+		listConnections.AddConnection(connection)
 		//A new goroutine is started for the specific connection. This connection constantly
-		go handleConnections(connection, msgChannel, &ListConnections)
+		go handleConnections(connection, &serverState)
 
 	}
 
 }
 
 // Receives messages from a msg channel and sends them over.
-func SendMessages(msgChannel chan string, ListConnections *extras.ConnectionList) {
+func SendMessages(serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
-	for newMsg := range msgChannel {
+	for newMsg := range serverState.MsgChannel {
 
-		ListConnections.Key.Lock()
+		serverState.ListConnections.Key.Lock()
 
-		for conn := range ListConnections.Connections {
+		for conn := range serverState.ListConnections.Connections {
 			fmt.Fprintf(conn, "%s", newMsg)
 		}
-		ListConnections.Key.Unlock()
+		serverState.ListConnections.Key.Unlock()
 	}
 }
 
 // Listens for new messages coming from a particular client
-func handleConnections(sender net.Conn, msgChannel chan string, connectionList *extras.ConnectionList) {
+func handleConnections(sender net.Conn, serverState *extras.Server) {
 
 	buffer := make([]byte, 1024)
 	for {
@@ -65,11 +66,11 @@ func handleConnections(sender net.Conn, msgChannel chan string, connectionList *
 			} else {
 				fmt.Printf("Connection closed abruptly or failed with error: %v\n", err)
 			}
-			connectionList.RemoveConnection(sender)
+			serverState.ListConnections.RemoveConnection(sender)
 			return
 		}
 		msg := buffer[:bytesRead]
-		msgChannel <- string(msg)
+		serverState.MsgChannel <- string(msg)
 
 	}
 

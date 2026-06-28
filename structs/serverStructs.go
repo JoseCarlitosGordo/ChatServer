@@ -24,7 +24,7 @@ type Connection struct {
 type Server struct {
 	Listener        net.Listener
 	MsgChannel      chan string
-	ListConnections ConnectionList
+	ListConnections *ConnectionList
 	Database        sql.DB
 }
 
