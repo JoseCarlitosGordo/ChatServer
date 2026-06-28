@@ -1,6 +1,7 @@
 package main
 
 import (
+	extras "chatserver/structs"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +10,7 @@ import (
 
 func main() {
 
-	ListConnections := ConnectionList{connectionList: map[net.Conn]bool{}}
+	ListConnections := extras.ConnectionList{Connections: map[net.Conn]bool{}}
 	msgChannel := make(chan string)
 	// newUserChannel := make(chan net.Conn)
 
@@ -29,7 +30,7 @@ func main() {
 			fmt.Printf("%s", err.Error())
 			continue
 		}
-		ListConnections.addConnection(connection)
+		ListConnections.AddConnection(connection)
 		//A new goroutine is started for the specific connection. This connection constantly
 		go handleConnections(connection, msgChannel, &ListConnections)
 
@@ -38,21 +39,21 @@ func main() {
 }
 
 // Receives messages from a msg channel and sends them over.
-func SendMessages(msgChannel chan string, ListConnections *ConnectionList) {
+func SendMessages(msgChannel chan string, ListConnections *extras.ConnectionList) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range msgChannel {
 
-		ListConnections.key.Lock()
+		ListConnections.Key.Lock()
 
-		for conn := range ListConnections.connectionList {
+		for conn := range ListConnections.Connections {
 			fmt.Fprintf(conn, "%s", newMsg)
 		}
-		ListConnections.key.Unlock()
+		ListConnections.Key.Unlock()
 	}
 }
 
 // Listens for new messages coming from a particular client
-func handleConnections(sender net.Conn, msgChannel chan string, connectionList *ConnectionList) {
+func handleConnections(sender net.Conn, msgChannel chan string, connectionList *extras.ConnectionList) {
 
 	buffer := make([]byte, 1024)
 	for {
@@ -64,7 +65,7 @@ func handleConnections(sender net.Conn, msgChannel chan string, connectionList *
 			} else {
 				fmt.Printf("Connection closed abruptly or failed with error: %v\n", err)
 			}
-			connectionList.removeConnection(sender)
+			connectionList.RemoveConnection(sender)
 			return
 		}
 		msg := buffer[:bytesRead]
