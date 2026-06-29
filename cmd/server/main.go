@@ -1,7 +1,13 @@
 package main
 
 import (
+	"bytes"
 	extras "chatserver/structs"
+	"encoding/gob"
+
+	"golang.org/x/crypto/argon2"
+
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +17,8 @@ import (
 func main() {
 
 	listConnections := extras.ConnectionList{Connections: map[net.Conn]bool{}}
-	msgChannel := make(chan string)
+	//msgChannel := make(chan string)
+	msgChannel := make(chan extras.Packet[any])
 	// newUserChannel := make(chan net.Conn)
 
 	listener, err := net.Listen("tcp", ":8080")
@@ -19,9 +26,19 @@ func main() {
 		fmt.Printf("%s", err.Error())
 		return
 	}
-	serverState := extras.Server{Listener: listener, MsgChannel: msgChannel, ListConnections: &listConnections}
+	dbConnection, err := sql.Open("sqlite", "ChatServerDB")
+	if err != nil {
+		fmt.Printf("Database Error: %s", err.Error())
+		return
+	}
+
+	//serverState := extras.Server{Listener: listener, MsgChannel: msgChannel, ListConnections: &listConnections, Database: dbConnection}
+	serverState := extras.Server{Listener: listener, MsgChannel: msgChannel, ListConnections: &listConnections, Database: dbConnection}
+
 	fmt.Println("Session started")
+
 	defer listener.Close()
+	defer dbConnection.Close()
 	//Separate goroutine for msg sending. ListConnections is updated automatically.
 	go SendMessages(&serverState)
 	for {
@@ -32,7 +49,7 @@ func main() {
 			continue
 		}
 		listConnections.AddConnection(connection)
-		//A new goroutine is started for the specific connection. This connection constantly
+		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
 		go handleConnections(connection, &serverState)
 
 	}
@@ -43,20 +60,44 @@ func main() {
 func SendMessages(serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range serverState.MsgChannel {
+		if newMsg.Type == "Login Attempt" {
+			var accountDetails extras.Packet[extras.Connection]
+			accountDetails = newMsg.Content.(extras.Packet[extras.Connection])
+			row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", accountDetails.Content.Account.UserName)
 
-		serverState.ListConnections.Key.Lock()
+			results := extras.UserAccount{}
 
-		for conn := range serverState.ListConnections.Connections {
-			fmt.Fprintf(conn, "%s", newMsg)
+			err := row.Scan(&results.Id, &results.UserName, &results.Password, &results.Description, &results.Password, &results.Salt)
+			if err != nil {
+
+			}
+
+			attemptHash := argon2.IDKey([]byte(accountDetails.Content.Account.Password), []byte(results.Salt), extras.Time, extras.Memory, extras.Threads, extras.KeyLength)
+			if string(attemptHash) == results.Password {
+				//Send success message
+
+			} else {
+				//Send Failure message
+			}
+
 		}
-		serverState.ListConnections.Key.Unlock()
+		if newMsg.Type == "BroadCast" {
+			serverState.ListConnections.Key.Lock()
+
+			for conn := range serverState.ListConnections.Connections {
+				fmt.Fprintf(conn, "%s", newMsg.Content)
+			}
+
+			serverState.ListConnections.Key.Unlock()
+		}
+
 	}
 }
 
 // Listens for new messages coming from a particular client
 func handleConnections(sender net.Conn, serverState *extras.Server) {
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, 4096)
 	for {
 
 		bytesRead, err := sender.Read(buffer)
@@ -69,8 +110,18 @@ func handleConnections(sender net.Conn, serverState *extras.Server) {
 			serverState.ListConnections.RemoveConnection(sender)
 			return
 		}
-		msg := buffer[:bytesRead]
-		serverState.MsgChannel <- string(msg)
+		rawData := buffer[:bytesRead]
+		readBuffer := bytes.NewBuffer(rawData)
+		decoder := gob.NewDecoder(readBuffer)
+		var decodedPacket extras.Packet[any]
+		err = decoder.Decode(&decodedPacket)
+		if err != nil {
+			fmt.Printf("Error decoding a packet: %v", err)
+
+		}
+		//Havent pushed this yet, trying to make code more modular so that chatserver takes more than just text.
+		//This will be good for authentication or other types of packets sent over the chatserver other than direct messages
+		serverState.MsgChannel <- decodedPacket
 
 	}
 

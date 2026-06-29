@@ -6,26 +6,38 @@ import (
 	"sync"
 )
 
+// Configuration Parameters (RFC 9106 Recommendation)
+var Time uint32 = 1           // Iterations over memory
+var Memory uint32 = 64 * 1024 // 64 MB of RAM
+var Threads uint8 = 4         // Parallelism (CPU threads)
+var KeyLength uint32 = 32     // Desired output key size
+
 type UserAccount struct {
+	Id          int
 	UserName    string
 	Description string
 	Password    string
-	salt        string
+	Salt        string
 }
 type ConnectionList struct {
 	Key         sync.RWMutex
 	Connections map[net.Conn]bool
 }
 
+type Packet[T any] struct {
+	Type    string
+	Content T
+}
 type Connection struct {
 	ConnectionObj net.Conn
 	Account       UserAccount
 }
 type Server struct {
-	Listener        net.Listener
-	MsgChannel      chan string
+	Listener net.Listener
+	//MsgChannel      chan string
+	MsgChannel      chan Packet[any]
 	ListConnections *ConnectionList
-	Database        sql.DB
+	Database        *sql.DB
 }
 
 func (c *ConnectionList) AddConnection(connectionToAdd net.Conn) {

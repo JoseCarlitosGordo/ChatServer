@@ -1,6 +1,7 @@
 package main
 
 import (
+	extras "chatserver/structs"
 	"errors"
 	"fmt"
 	"io"
@@ -37,18 +38,18 @@ func main() {
 		fmt.Printf("%s", err.Error())
 		return
 	}
-	loggedIn, err := CommenceAuthenticationProcess(conn)
+	connectionObj, err := CommenceAuthenticationProcess(conn)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
 	}
-	if loggedIn {
+	if connectionObj.Account != (extras.UserAccount{}) {
 		//TODO: send login details
 		//conn.Write()
 	}
 
 	fmt.Println("\n(Type 'exit()' to close this app)")
-	fmt.Print("\n Type in your msg to send stuff to friends! \n")
+	fmt.Println("Type in your msg to send stuff to friends!")
 
 	defer conn.Close()
 
