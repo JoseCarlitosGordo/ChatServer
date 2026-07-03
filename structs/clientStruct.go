@@ -1,5 +1,7 @@
 package extras
 
-type Session struct {
-	loggedInUser UserAccount
+type SessionState struct {
+	PacketListener            chan Packet[any]
+	AuthenticationProcessDone bool
+	ConnectionWrapper         Connection
 }

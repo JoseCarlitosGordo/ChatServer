@@ -12,6 +12,11 @@ var Memory uint32 = 64 * 1024 // 64 MB of RAM
 var Threads uint8 = 4         // Parallelism (CPU threads)
 var KeyLength uint32 = 32     // Desired output key size
 
+type PacketContents interface {
+	//Packet functionality for chat server (broadcasting msgs, login processes, etc.)
+	ProcessPacket()
+	ConvertPacketContents()
+}
 type UserAccount struct {
 	Id          int
 	UserName    string
@@ -22,6 +27,11 @@ type UserAccount struct {
 type ConnectionList struct {
 	Key         sync.RWMutex
 	Connections map[net.Conn]bool
+}
+
+type LoginAttempt struct {
+	WasSuccessful bool
+	Account       UserAccount
 }
 
 type Packet[T any] struct {

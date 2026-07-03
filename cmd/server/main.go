@@ -61,8 +61,9 @@ func SendMessages(serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range serverState.MsgChannel {
 		if newMsg.Type == "Login Attempt" {
-			var accountDetails extras.Packet[extras.Connection]
-			accountDetails = newMsg.Content.(extras.Packet[extras.Connection])
+
+			//casting content (Which is usually a generic) to a connection
+			accountDetails := newMsg.Content.(extras.Packet[extras.Connection])
 			row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", accountDetails.Content.Account.UserName)
 
 			results := extras.UserAccount{}
@@ -81,14 +82,20 @@ func SendMessages(serverState *extras.Server) {
 			}
 
 		}
+		if newMsg.Type == "SignUp Attempt" {
+
+		}
 		if newMsg.Type == "BroadCast" {
 			serverState.ListConnections.Key.Lock()
-
+			text := newMsg.Content.(extras.Packet[string])
 			for conn := range serverState.ListConnections.Connections {
-				fmt.Fprintf(conn, "%s", newMsg.Content)
+				fmt.Fprintf(conn, "%s", text)
 			}
 
 			serverState.ListConnections.Key.Unlock()
+		}
+		if newMsg.Type == "CloseConnection" {
+
 		}
 
 	}
