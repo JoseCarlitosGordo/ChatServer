@@ -1,4 +1,4 @@
-package db
+package main
 
 import (
 	"database/sql"
@@ -25,5 +25,6 @@ func main() {
 		salt TEXT
 
 	)`)
+	database.Exec("CREATE INDEX idx_users_username ON Users (username)")
 
 }

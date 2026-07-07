@@ -1,9 +1,14 @@
 package extras
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/gob"
+	"fmt"
 	"net"
 	"sync"
+
+	"golang.org/x/crypto/argon2"
 )
 
 // Configuration Parameters (RFC 9106 Recommendation)
@@ -12,10 +17,10 @@ var Memory uint32 = 64 * 1024 // 64 MB of RAM
 var Threads uint8 = 4         // Parallelism (CPU threads)
 var KeyLength uint32 = 32     // Desired output key size
 
-type PacketContents interface {
+type Packet interface {
 	//Packet functionality for chat server (broadcasting msgs, login processes, etc.)
-	ProcessPacket()
-	ConvertPacketContents()
+	ProcessServerPacket(*Server)
+	ProcessClientPacket()
 }
 type UserAccount struct {
 	Id          int
@@ -26,42 +31,124 @@ type UserAccount struct {
 }
 type ConnectionList struct {
 	Key         sync.RWMutex
-	Connections map[net.Conn]bool
+	Connections map[net.Conn]*Connection
 }
 
 type LoginAttempt struct {
-	WasSuccessful bool
-	Account       UserAccount
+	WasSuccessful     bool
+	ConnectionWrapper Connection
 }
 
-type Packet[T any] struct {
-	Type    string
-	Content T
+type SignUpAttempt struct {
+	WasSuccessful     bool
+	ConnectionWrapper Connection
+}
+type Message struct {
+	Text              string
+	ConnectionWrapper Connection
 }
 type Connection struct {
 	ConnectionObj net.Conn
+	Decoder       *gob.Decoder
+	Encoder       *gob.Encoder
 	Account       UserAccount
+}
+type ConnectionRemover struct {
+	ConnectionToRemove Connection
+	WasSuccessful      bool
 }
 type Server struct {
 	Listener net.Listener
 	//MsgChannel      chan string
-	MsgChannel      chan Packet[any]
+	MsgChannel      chan Packet
 	ListConnections *ConnectionList
-	Database        *sql.DB
+
+	Database *sql.DB
+	Buffer   *bytes.Buffer
 }
 
-func (c *ConnectionList) AddConnection(connectionToAdd net.Conn) {
+func (c *ConnectionList) AddConnection(connectionToAdd *Connection) {
 	c.Key.Lock()
 	defer c.Key.Unlock()
-	c.Connections[connectionToAdd] = true
+	c.Connections[connectionToAdd.ConnectionObj] = connectionToAdd
 }
 
-func (c *ConnectionList) RemoveConnection(connectionToRemove net.Conn) {
+func (c *ConnectionList) RemoveConnection(connectionToRemove *Connection) {
 	c.Key.Lock()
 	defer c.Key.Unlock()
-	delete(c.Connections, connectionToRemove)
+	delete(c.Connections, connectionToRemove.ConnectionObj)
 }
 
-func (c *Server) addUser(account UserAccount) {
+func (s *Server) addUser(account UserAccount) {
+
+}
+
+func (c *Connection) ProcessServerPacket() {
+
+}
+
+func (c *Connection) ProcessClientPacket() {
+
+}
+
+// Sends messages to every connected user in the chat server
+func (m *Message) ProcessServerPacket(serverState *Server) {
+	serverState.ListConnections.Key.Lock()
+	for conn := range serverState.ListConnections.Connections {
+		// go func(c net.Conn) {
+		// 	encoder := gob.NewEncoder(c)
+		// 	encoder.Encode(m)
+		// }(conn.Encoder)
+		serverState.ListConnections.Connections[conn].Encoder.Encode(m)
+
+	}
+	serverState.ListConnections.Key.Unlock()
+
+}
+func (m *Message) ProcessClientPacket() {
+	fmt.Printf("%s", m.Text)
+
+}
+func (l *LoginAttempt) ProcessServerPacket(serverState *Server) {
+	//casting content (Which is usually a generic) to a connection
+	// accountDetails := newMsg.Content.(extras.Packet[extras.Connection])
+	//guest account edge case
+	if l.ConnectionWrapper.Account == (UserAccount{}) {
+		newConnection := Connection{ConnectionObj: l.ConnectionWrapper.ConnectionObj, Encoder: gob.NewEncoder(l.ConnectionWrapper.ConnectionObj), Decoder: gob.NewDecoder(l.ConnectionWrapper.ConnectionObj)}
+		serverState.ListConnections.AddConnection(&newConnection)
+		return
+
+	}
+	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.ConnectionWrapper.Account.UserName)
+
+	results := UserAccount{}
+
+	err := row.Scan(&results.Id, &results.UserName, &results.Password, &results.Description, &results.Password, &results.Salt)
+	if err != nil {
+		fmt.Printf("Error processing login attempt: %v", err)
+		return
+	}
+
+	attemptHash := argon2.IDKey([]byte(l.ConnectionWrapper.Account.Password), []byte(results.Salt), Time, Memory, Threads, KeyLength)
+
+	if string(attemptHash) == results.Password {
+		//Send success message
+		serverState.ListConnections.Connections[l.ConnectionWrapper.ConnectionObj].Account = results
+		serverState.ListConnections.Connections[l.ConnectionWrapper.ConnectionObj].Encoder.Encode(&LoginAttempt{WasSuccessful: true, ConnectionWrapper: Connection{Account: results}})
+
+	} else {
+
+		serverState.ListConnections.Connections[l.ConnectionWrapper.ConnectionObj].Encoder.Encode(&LoginAttempt{WasSuccessful: false})
+	}
+
+}
+
+func (su *SignUpAttempt) ProcessServerPacket() {
+
+}
+func (su *SignUpAttempt) ProcessClientPacket() {
+
+}
+func (l *LoginAttempt) ProcessClientPacket() {
 
 }

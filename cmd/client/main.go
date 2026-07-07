@@ -4,36 +4,21 @@ import (
 	"bytes"
 	extras "chatserver/structs"
 	"encoding/gob"
-	"errors"
 	"fmt"
-	"io"
 	"net"
 )
 
 func receiveMessages(sessionState *extras.SessionState) {
 	for {
 
-		buffer := make([]byte, 4096)
-		bytesRead, err := sessionState.ConnectionWrapper.ConnectionObj.Read(buffer)
-		//if server goes down
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				fmt.Println("Connection closed gracefully by the remote peer.")
-			} else {
-				fmt.Printf("Connection closed abruptly or failed with error: %v\n", err)
-			}
-			return
-		}
 		// msg := buffer[:bytesRead]
 		// // 1. Move cursor up 1 line
 		// //fmt.Println("\033[2A")
 		// fmt.Print("\033[1B")
 		// fmt.Printf("%v \n", string(msg))
-		rawData := buffer[:bytesRead]
-		readBuffer := bytes.NewBuffer(rawData)
-		decoder := gob.NewDecoder(readBuffer)
-		var decodedPacket extras.Packet[any]
-		err = decoder.Decode(&decodedPacket)
+
+		var decodedPacket extras.Packet
+		err := sessionState.Decoder.Decode(&decodedPacket)
 		if err != nil {
 			fmt.Printf("Error decoding a packet: %v", err)
 
@@ -41,9 +26,9 @@ func receiveMessages(sessionState *extras.SessionState) {
 		//Havent pushed this yet, trying to make code more modular so that chatserver takes more than just text.
 		//This will be good for authentication or other types of packets sent over the chatserver other than direct messages
 		if !sessionState.AuthenticationProcessDone {
-			if decodedPacket.Type != "Login Attempt" && decodedPacket.Type != "SignUp Attempt" {
+			_, ok := decodedPacket.(*extras.Message)
+			if ok {
 				continue
-
 			}
 		}
 		sessionState.PacketListener <- decodedPacket
@@ -53,14 +38,14 @@ func receiveMessages(sessionState *extras.SessionState) {
 
 func main() {
 	//send over the tcp protocol
-
+	var buffer bytes.Buffer
 	conn, err := net.Dial("tcp", "localhost:8080")
-	packetListener := make(chan extras.Packet[any])
+	packetListener := make(chan extras.Packet)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
 	}
-	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener}
+	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener, Buffer: &buffer, Decoder: gob.NewDecoder(conn), Encoder: gob.NewEncoder(conn)}
 	go processPackets(&sessionState)
 	err = CommenceAuthenticationProcess(&sessionState)
 	if err != nil {
@@ -79,11 +64,13 @@ func main() {
 	for {
 		go receiveMessages(&sessionState)
 		msgToSend := sendMessage()
-		if msgToSend == "exit()" {
+		if msgToSend.Text == "exit()" {
+			fmt.Println("Exiting the server....")
 			return
 		}
+		msgToSend.ConnectionWrapper = sessionState.ConnectionWrapper
 
-		_, err := fmt.Fprintf(conn, "%s", msgToSend)
+		err := sessionState.Encoder.Encode(msgToSend)
 		if err != nil {
 			fmt.Printf("The server has stopped working unexpectedly...")
 			return
@@ -94,9 +81,14 @@ func main() {
 
 func processPackets(sessionState *extras.SessionState) {
 	for newPacket := range sessionState.PacketListener {
-		if newPacket.Type == "Message" && sessionState.AuthenticationProcessDone {
-			//print out msg here
+		// if newPacket.Type == "Message" && sessionState.AuthenticationProcessDone {
+		// 	//print out msg here
+		// switch t := newPacket.(type) {
+		// case *extras.Message:
 
-		}
+		// }
+
+		// }
+		newPacket.ProcessClientPacket()
 	}
 }

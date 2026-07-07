@@ -3,14 +3,13 @@ package main
 import (
 	"bufio"
 	extras "chatserver/structs"
-	"encoding/gob"
 	"fmt"
 	"os"
 )
 
 var msgScanner = bufio.NewScanner(os.Stdin)
 
-func sendMessage() string {
+func sendMessage() *extras.Message {
 
 	msgScanner.Scan()
 	message := msgScanner.Text()
@@ -22,7 +21,7 @@ func sendMessage() string {
 	// Carriage return to move cursor to the beginning of the line
 	fmt.Print("\r")
 
-	return message
+	return &extras.Message{Text: message}
 }
 
 func CommenceAuthenticationProcess(sessionState *extras.SessionState) error {
@@ -37,6 +36,11 @@ func CommenceAuthenticationProcess(sessionState *extras.SessionState) error {
 		return SignUpProcess(sessionState)
 	}
 	fmt.Println("Logging in as Guest")
+	err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj}})
+	if err != nil {
+		return err
+	}
+
 	return nil
 
 }
@@ -45,7 +49,8 @@ func LoginProcess(sessionState *extras.SessionState) error {
 	//TODO: pass in connection, check for user account email and password on server and return a valid Connection Object\
 
 	// Create an encoder and target our buffer
-	enc := gob.NewEncoder(sessionState.ConnectionWrapper.ConnectionObj)
+
+	var response *extras.LoginAttempt
 	for {
 
 		fmt.Println("Logging in")
@@ -60,19 +65,20 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		loginAttempt := extras.UserAccount{UserName: userName, Password: password}
 
 		//send login attempt over network
-		err := enc.Encode(extras.Packet[extras.Connection]{Type: "Login Attempt", Content: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: loginAttempt}})
+		err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: loginAttempt}})
 		if err != nil {
 			return err
 		}
 
 		//TODO: refactor client so that it handles messages and other packets sent from the server
 		serverResponse := <-sessionState.PacketListener
-		response := serverResponse.Content.(extras.Packet[extras.LoginAttempt])
-		if response.Content.WasSuccessful {
+		response = serverResponse.(*extras.LoginAttempt)
+		if response.WasSuccessful {
 			break
 		}
 	}
-
+	sessionState.AuthenticationProcessDone = true
+	sessionState.ConnectionWrapper.Account = response.ConnectionWrapper.Account
 	return nil
 
 	//TODO: read from buffer to check if username and password match what is found in the db. If it is found, return True.
@@ -83,8 +89,6 @@ func LoginProcess(sessionState *extras.SessionState) error {
 func SignUpProcess(sessionState *extras.SessionState) error {
 	//TODO: pass in connection, prompt user for user name and password, hash the password, salt it, return a valid connection object.
 	//This connection obj will contain user account and the tcp connection to the server, ensuring both client and server knows who it belongs to
-	enc := gob.NewEncoder(sessionState.ConnectionWrapper.ConnectionObj)
-
 	fmt.Println("Signup Process")
 	fmt.Print("What is your username?  ")
 	msgScanner.Scan()
@@ -100,7 +104,7 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 	accountCreation := extras.UserAccount{UserName: userName, Password: password, Description: description}
 
 	//send login attempt over network
-	err := enc.Encode(extras.Packet[extras.Connection]{Type: "SignUp Attempt", Content: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: accountCreation}})
+	err := sessionState.Encoder.Encode(extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: accountCreation})
 	if err != nil {
 		return err
 	}
