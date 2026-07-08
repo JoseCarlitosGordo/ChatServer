@@ -1,7 +1,7 @@
 package extras
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/gob"
 )
 
@@ -11,5 +11,5 @@ type SessionState struct {
 	ConnectionWrapper         Connection
 	Encoder                   *gob.Encoder
 	Decoder                   *gob.Decoder
-	Buffer                    *bytes.Buffer
+	InputScanner              *bufio.Scanner
 }

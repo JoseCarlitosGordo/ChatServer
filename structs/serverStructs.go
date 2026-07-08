@@ -2,11 +2,14 @@ package extras
 
 import (
 	"bytes"
+	"crypto/rand"
 	"database/sql"
 	"encoding/gob"
 	"fmt"
 	"net"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -110,8 +113,6 @@ func (m *Message) ProcessClientPacket() {
 
 }
 func (l *LoginAttempt) ProcessServerPacket(serverState *Server) {
-	//casting content (Which is usually a generic) to a connection
-	// accountDetails := newMsg.Content.(extras.Packet[extras.Connection])
 	//guest account edge case
 	if l.ConnectionWrapper.Account == (UserAccount{}) {
 		newConnection := Connection{ConnectionObj: l.ConnectionWrapper.ConnectionObj, Encoder: gob.NewEncoder(l.ConnectionWrapper.ConnectionObj), Decoder: gob.NewDecoder(l.ConnectionWrapper.ConnectionObj)}
@@ -142,8 +143,70 @@ func (l *LoginAttempt) ProcessServerPacket(serverState *Server) {
 	}
 
 }
+func hasSpecialCharacter(s string) bool {
+	for _, r := range s {
+		if unicode.IsPunct(r) || unicode.IsSymbol(r) {
+			return true
+		}
+	}
+	return false
+}
+func hasUpperCase(s string) bool {
+	for _, r := range s {
+		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+	return false
+}
+func hasLowerCase(s string) bool {
+	for _, r := range s {
+		if unicode.IsLower(r) {
+			return true
+		}
+	}
+	return false
+}
 
-func (su *SignUpAttempt) ProcessServerPacket() {
+func userNameAndPasswordAreValid(userNameExists int, password string) bool {
+	if userNameExists == 1 {
+
+	}
+	if utf8.RuneCountInString(password) < 16 {
+		//error
+		return false
+
+	}
+	if !hasSpecialCharacter(password) {
+		return false
+
+	}
+	if !hasUpperCase(password) {
+		return false
+
+	}
+	if !hasLowerCase(password) {
+		return false
+
+	}
+	return true
+
+}
+func (su *SignUpAttempt) ProcessServerPacket(serverState *Server) {
+	row := serverState.Database.QueryRow("SELECT 1 FROM Users WHERE username = ? LIMIT 1", su.ConnectionWrapper.Account.UserName)
+	var output int
+	err := row.Scan(&output)
+	if err != nil {
+		fmt.Printf("Error found while decoding sign up attempt: %s", err)
+	}
+	if !userNameAndPasswordAreValid(output, su.ConnectionWrapper.Account.Password) {
+		//send back error msg and return False
+
+	}
+	var salt []byte
+	rand.Read(salt)
+	HashedPassword := argon2.IDKey([]byte(su.ConnectionWrapper.Account.Password), salt, Time, Memory, Threads, KeyLength)
+	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.ConnectionWrapper.Account.UserName, su.ConnectionWrapper.Account.Description, HashedPassword, salt)
 
 }
 func (su *SignUpAttempt) ProcessClientPacket() {

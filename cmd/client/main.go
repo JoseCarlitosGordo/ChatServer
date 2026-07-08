@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	extras "chatserver/structs"
 	"encoding/gob"
 	"fmt"
 	"net"
+	"os"
 )
 
 func receiveMessages(sessionState *extras.SessionState) {
@@ -23,8 +24,7 @@ func receiveMessages(sessionState *extras.SessionState) {
 			fmt.Printf("Error decoding a packet: %v", err)
 
 		}
-		//Havent pushed this yet, trying to make code more modular so that chatserver takes more than just text.
-		//This will be good for authentication or other types of packets sent over the chatserver other than direct messages
+		//checks if authentication process isnt done and whether the decoded packet is a message
 		if !sessionState.AuthenticationProcessDone {
 			_, ok := decodedPacket.(*extras.Message)
 			if ok {
@@ -38,32 +38,28 @@ func receiveMessages(sessionState *extras.SessionState) {
 
 func main() {
 	//send over the tcp protocol
-	var buffer bytes.Buffer
+
 	conn, err := net.Dial("tcp", "localhost:8080")
 	packetListener := make(chan extras.Packet)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
 	}
-	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener, Buffer: &buffer, Decoder: gob.NewDecoder(conn), Encoder: gob.NewEncoder(conn)}
+	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener, Decoder: gob.NewDecoder(conn), Encoder: gob.NewEncoder(conn), InputScanner: bufio.NewScanner(os.Stdin)}
+	go receiveMessages(&sessionState)
 	go processPackets(&sessionState)
 	err = CommenceAuthenticationProcess(&sessionState)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
 	}
-	// if connectionObj.Account != (extras.UserAccount{}) {
-	// 	//TODO: send login details
-	// 	//conn.Write()
-	// }
 
 	fmt.Println("\n(Type 'exit()' to close this app)")
 	fmt.Println("Type in your msg to send stuff to friends!")
 
 	defer conn.Close()
 	for {
-		go receiveMessages(&sessionState)
-		msgToSend := sendMessage()
+		msgToSend := sendMessage(&sessionState)
 		if msgToSend.Text == "exit()" {
 			fmt.Println("Exiting the server....")
 			return
