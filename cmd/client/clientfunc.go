@@ -84,20 +84,22 @@ func LoginProcess(sessionState *extras.SessionState) error {
 func SignUpProcess(sessionState *extras.SessionState) error {
 	//TODO: pass in connection, prompt user for user name and password, hash the password, salt it, return a valid connection object.
 	//This connection obj will contain user account and the tcp connection to the server, ensuring both client and server knows who it belongs to
+	var response *extras.SignUpAttempt
+	var accountCreation extras.UserAccount
 	for {
 		fmt.Println("Signup Process")
-		fmt.Print("What is your username?  ")
+		fmt.Print("What is your username? (must be unique)")
 		sessionState.InputScanner.Scan()
 		userName := sessionState.InputScanner.Text()
 
 		fmt.Print("Write a short description describing yourself:")
 		sessionState.InputScanner.Scan()
 		description := sessionState.InputScanner.Text()
-		fmt.Print("Your Password: ")
+		fmt.Print("Your Password (must be at least 16 characters and include 1 uppercase, 1 lower case and 1 special character): ")
 		sessionState.InputScanner.Scan()
 		password := sessionState.InputScanner.Text()
 
-		accountCreation := extras.UserAccount{UserName: userName, Password: password, Description: description}
+		accountCreation = extras.UserAccount{UserName: userName, Password: password, Description: description}
 
 		//send login attempt over network
 		err := sessionState.Encoder.Encode(extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: accountCreation})
@@ -105,10 +107,14 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 			return err
 		}
 		serverResponse := <-sessionState.PacketListener
-		response := serverResponse.(*extras.SignUpAttempt)
+		response = serverResponse.(*extras.SignUpAttempt)
 		if response.WasSuccessful {
 			break
 		}
+		fmt.Println("Your username and password pair are invalid, please try again")
+
 	}
+	sessionState.AuthenticationProcessDone = true
+	sessionState.ConnectionWrapper.Account = extras.UserAccount{UserName: accountCreation.UserName, Description: accountCreation.Description}
 	return nil
 }

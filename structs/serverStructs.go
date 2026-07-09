@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"unicode"
-	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -109,16 +107,13 @@ func (m *Message) ProcessServerPacket(serverState *Server) {
 
 }
 func (m *Message) ProcessClientPacket() {
-	fmt.Printf("%s", m.Text)
+	fmt.Printf("%s: %s", m.ConnectionWrapper.Account.UserName, m.Text)
 
 }
 func (l *LoginAttempt) ProcessServerPacket(serverState *Server) {
 	//guest account edge case
 	if l.ConnectionWrapper.Account == (UserAccount{}) {
-		newConnection := Connection{ConnectionObj: l.ConnectionWrapper.ConnectionObj, Encoder: gob.NewEncoder(l.ConnectionWrapper.ConnectionObj), Decoder: gob.NewDecoder(l.ConnectionWrapper.ConnectionObj)}
-		serverState.ListConnections.AddConnection(&newConnection)
 		return
-
 	}
 	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.ConnectionWrapper.Account.UserName)
 
@@ -135,7 +130,7 @@ func (l *LoginAttempt) ProcessServerPacket(serverState *Server) {
 	if string(attemptHash) == results.Password {
 		//Send success message
 		serverState.ListConnections.Connections[l.ConnectionWrapper.ConnectionObj].Account = results
-		serverState.ListConnections.Connections[l.ConnectionWrapper.ConnectionObj].Encoder.Encode(&LoginAttempt{WasSuccessful: true, ConnectionWrapper: Connection{Account: results}})
+		serverState.ListConnections.Connections[l.ConnectionWrapper.ConnectionObj].Encoder.Encode(&LoginAttempt{WasSuccessful: true, ConnectionWrapper: Connection{Account: UserAccount{UserName: results.UserName, Description: results.Description}}})
 
 	} else {
 
@@ -143,55 +138,7 @@ func (l *LoginAttempt) ProcessServerPacket(serverState *Server) {
 	}
 
 }
-func hasSpecialCharacter(s string) bool {
-	for _, r := range s {
-		if unicode.IsPunct(r) || unicode.IsSymbol(r) {
-			return true
-		}
-	}
-	return false
-}
-func hasUpperCase(s string) bool {
-	for _, r := range s {
-		if unicode.IsUpper(r) {
-			return true
-		}
-	}
-	return false
-}
-func hasLowerCase(s string) bool {
-	for _, r := range s {
-		if unicode.IsLower(r) {
-			return true
-		}
-	}
-	return false
-}
 
-func userNameAndPasswordAreValid(userNameExists int, password string) bool {
-	if userNameExists == 1 {
-
-	}
-	if utf8.RuneCountInString(password) < 16 {
-		//error
-		return false
-
-	}
-	if !hasSpecialCharacter(password) {
-		return false
-
-	}
-	if !hasUpperCase(password) {
-		return false
-
-	}
-	if !hasLowerCase(password) {
-		return false
-
-	}
-	return true
-
-}
 func (su *SignUpAttempt) ProcessServerPacket(serverState *Server) {
 	row := serverState.Database.QueryRow("SELECT 1 FROM Users WHERE username = ? LIMIT 1", su.ConnectionWrapper.Account.UserName)
 	var output int
@@ -201,12 +148,14 @@ func (su *SignUpAttempt) ProcessServerPacket(serverState *Server) {
 	}
 	if !userNameAndPasswordAreValid(output, su.ConnectionWrapper.Account.Password) {
 		//send back error msg and return False
+		serverState.ListConnections.Connections[su.ConnectionWrapper.ConnectionObj].Encoder.Encode(&SignUpAttempt{WasSuccessful: false})
 
 	}
 	var salt []byte
 	rand.Read(salt)
 	HashedPassword := argon2.IDKey([]byte(su.ConnectionWrapper.Account.Password), salt, Time, Memory, Threads, KeyLength)
 	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.ConnectionWrapper.Account.UserName, su.ConnectionWrapper.Account.Description, HashedPassword, salt)
+	serverState.ListConnections.Connections[su.ConnectionWrapper.ConnectionObj].Encoder.Encode(&LoginAttempt{WasSuccessful: true})
 
 }
 func (su *SignUpAttempt) ProcessClientPacket() {
