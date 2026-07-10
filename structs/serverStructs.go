@@ -54,6 +54,7 @@ type Connection struct {
 	Encoder       *gob.Encoder
 	Account       UserAccount
 }
+
 type ConnectionRemover struct {
 	ConnectionToRemove Connection
 	WasSuccessful      bool

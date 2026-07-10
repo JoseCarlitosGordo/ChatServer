@@ -61,7 +61,7 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		loginAttempt := extras.UserAccount{UserName: userName, Password: password}
 
 		//send login attempt over network
-		err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: loginAttempt}})
+		err := sessionState.Encoder.Encode(&extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: loginAttempt}})
 		if err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 		accountCreation = extras.UserAccount{UserName: userName, Password: password, Description: description}
 
 		//send login attempt over network
-		err := sessionState.Encoder.Encode(extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: accountCreation})
+		err := sessionState.Encoder.Encode(&extras.SignUpAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: accountCreation}})
 		if err != nil {
 			return err
 		}
