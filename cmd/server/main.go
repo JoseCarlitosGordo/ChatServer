@@ -45,7 +45,7 @@ func main() {
 
 		serverState.ListConnections.AddConnection(newConnection)
 		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
-		go processPackets(serverState)
+		go processPackets(connection, serverState)
 		go handleConnections(newConnection, serverState)
 
 	}
@@ -53,10 +53,10 @@ func main() {
 }
 
 // Receives messages from a msg channel and sends them over.
-func processPackets(serverState *extras.Server) {
+func processPackets(conn net.Conn, serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range serverState.MsgChannel {
-		newMsg.ProcessServerPacket(serverState)
+		newMsg.ProcessServerPacket(conn, serverState)
 	}
 }
 

@@ -32,10 +32,10 @@ func CommenceAuthenticationProcess(sessionState *extras.SessionState) error {
 		return SignUpProcess(sessionState)
 	}
 	fmt.Println("Logging in as Guest")
-	err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj}})
-	if err != nil {
-		return err
-	}
+	// err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj}})
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 
@@ -47,7 +47,7 @@ func LoginProcess(sessionState *extras.SessionState) error {
 	// Create an encoder and target our buffer
 
 	var response *extras.LoginAttempt
-	for {
+	for !sessionState.AuthenticationProcessDone {
 
 		fmt.Println("Logging in")
 		fmt.Print("Your username: ")
@@ -61,7 +61,7 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		loginAttempt := extras.UserAccount{UserName: userName, Password: password}
 
 		//send login attempt over network
-		err := sessionState.Encoder.Encode(&extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: loginAttempt}})
+		err := sessionState.Encoder.Encode(&extras.LoginAttempt{Account: loginAttempt})
 		if err != nil {
 			return err
 		}
@@ -73,7 +73,7 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		}
 	}
 	sessionState.AuthenticationProcessDone = true
-	sessionState.ConnectionWrapper.Account = response.ConnectionWrapper.Account
+	sessionState.ConnectionWrapper.Account = response.Account
 	return nil
 
 	//TODO: read from buffer to check if username and password match what is found in the db. If it is found, return True.
@@ -102,7 +102,7 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 		accountCreation = extras.UserAccount{UserName: userName, Password: password, Description: description}
 
 		//send login attempt over network
-		err := sessionState.Encoder.Encode(&extras.SignUpAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj, Account: accountCreation}})
+		err := sessionState.Encoder.Encode(&extras.SignUpAttempt{Account: accountCreation})
 		if err != nil {
 			return err
 		}
