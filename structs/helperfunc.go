@@ -1,6 +1,7 @@
 package extras
 
 import (
+	"encoding/gob"
 	"unicode"
 	"unicode/utf8"
 )
@@ -29,10 +30,8 @@ func hasLowerCase(s string) bool {
 	}
 	return false
 }
-func userNameAndPasswordAreValid(userNameExists int, password string) bool {
-	if userNameExists == 1 {
+func userNameAndPasswordAreValid(password string) bool {
 
-	}
 	if utf8.RuneCountInString(password) < 16 {
 		//error
 		return false
@@ -51,5 +50,13 @@ func userNameAndPasswordAreValid(userNameExists int, password string) bool {
 
 	}
 	return true
+
+}
+
+func RegisterEncodingDecodingTypes() {
+
+	gob.Register(&SignUpAttempt{})
+	gob.Register(&LoginAttempt{})
+	gob.Register(&Message{})
 
 }

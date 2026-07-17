@@ -13,6 +13,7 @@ import (
 func main() {
 	//TODO: Remap connectionList so that each net.conn matches an extras.Connection Obj
 	//This is good for ensuring that encoders can be accessed easily in handleConnections
+	extras.RegisterEncodingDecodingTypes()
 	listConnections := &extras.ConnectionList{Connections: make(map[net.Conn]*extras.Connection)}
 
 	msgChannel := make(chan extras.Packet)
@@ -62,13 +63,16 @@ func processPackets(conn net.Conn, serverState *extras.Server) {
 
 // Listens for new messages coming from a particular client
 func handleConnections(sender *extras.Connection, serverState *extras.Server) {
+	defer serverState.ListConnections.RemoveConnection(sender)
 	for {
 
 		var decodedPacket extras.Packet
-		fmt.Printf("%v", sender.Decoder)
+		//fmt.Printf("%v", sender.Decoder)
 		err := sender.Decoder.Decode(&decodedPacket)
+		fmt.Printf("Message Received: %+v \n", decodedPacket)
 		if err != nil {
 			fmt.Printf("Error decoding a packet: %v", err)
+			return
 		}
 		//messages that are decoded are sent to a channel where the contents are processed
 		//Keep an eye on this code....

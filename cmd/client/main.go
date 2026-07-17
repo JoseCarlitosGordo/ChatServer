@@ -39,6 +39,7 @@ func receiveMessages(sessionState *extras.SessionState) {
 func main() {
 	//send over the tcp protocol
 
+	extras.RegisterEncodingDecodingTypes()
 	conn, err := net.Dial("tcp", "localhost:8080")
 	packetListener := make(chan extras.Packet)
 	if err != nil {
@@ -64,7 +65,7 @@ func main() {
 			fmt.Println("Exiting the server....")
 			return
 		}
-		msgToSend.ConnectionWrapper = sessionState.ConnectionWrapper
+		msgToSend.Account = sessionState.ConnectionWrapper.Account
 
 		err := sessionState.Encoder.Encode(msgToSend)
 		if err != nil {
@@ -85,6 +86,6 @@ func processPackets(sessionState *extras.SessionState) {
 		// }
 
 		// }
-		newPacket.ProcessClientPacket()
+		newPacket.ProcessClientPacket(sessionState)
 	}
 }

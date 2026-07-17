@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -21,7 +22,7 @@ var KeyLength uint32 = 32     // Desired output key size
 type Packet interface {
 	//Packet functionality for chat server (broadcasting msgs, login processes, etc.)
 	ProcessServerPacket(conn net.Conn, serverState *Server)
-	ProcessClientPacket()
+	ProcessClientPacket(sessionState *SessionState)
 }
 type UserAccount struct {
 	Id          int
@@ -45,8 +46,8 @@ type SignUpAttempt struct {
 	Account       UserAccount
 }
 type Message struct {
-	Text              string
-	ConnectionWrapper Connection
+	Text    string
+	Account UserAccount
 }
 type Connection struct {
 	ConnectionObj net.Conn
@@ -56,7 +57,7 @@ type Connection struct {
 }
 
 type ConnectionRemover struct {
-	ConnectionToRemove Connection
+	ConnectionToRemove net.Conn
 	WasSuccessful      bool
 }
 type Server struct {
@@ -107,8 +108,13 @@ func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
 	serverState.ListConnections.Key.Unlock()
 
 }
-func (m *Message) ProcessClientPacket() {
-	fmt.Printf("%s: %s", m.ConnectionWrapper.Account.UserName, m.Text)
+func (m *Message) ProcessClientPacket(sessionState *SessionState) {
+	if m.Account == (UserAccount{}) {
+		fmt.Printf("Guest: %s", m.Text)
+
+	} else {
+		fmt.Printf("%s: %s", m.Account.UserName, m.Text)
+	}
 
 }
 func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
@@ -120,7 +126,12 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 
 	err := row.Scan(&results.Id, &results.UserName, &results.Password, &results.Description, &results.Password, &results.Salt)
 	if err != nil {
-		fmt.Printf("Error processing login attempt: %v", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Printf("Username does not exist")
+		} else {
+			fmt.Printf("Error processing login attempt: %v", err)
+		}
+		serverState.ListConnections.Connections[conn].Encoder.Encode(&LoginAttempt{WasSuccessful: false})
 		return
 	}
 
@@ -129,7 +140,8 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 	if string(attemptHash) == results.Password {
 		//Send success message
 		serverState.ListConnections.Connections[conn].Account = results
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&LoginAttempt{WasSuccessful: true, Account: UserAccount{UserName: results.UserName, Description: results.Description}})
+		var attempt Packet = &LoginAttempt{WasSuccessful: true, Account: UserAccount{UserName: results.UserName, Description: results.Description}}
+		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 
 	} else {
 
@@ -139,27 +151,56 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 }
 
 func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
+
 	row := serverState.Database.QueryRow("SELECT 1 FROM Users WHERE username = ? LIMIT 1", su.Account.UserName)
 	var output int
+	var attempt Packet
+
 	err := row.Scan(&output)
-	if err != nil {
-		fmt.Printf("Error found while decoding sign up attempt: %s", err)
+	if err == nil {
+		attempt = &SignUpAttempt{WasSuccessful: false}
+		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+		return
 	}
-	if !userNameAndPasswordAreValid(output, su.Account.Password) {
+	fmt.Println("Don't think it got past this point")
+	if !errors.Is(err, sql.ErrNoRows) {
+		fmt.Printf("Error found while decoding sign up attempt: %s", err)
+		attempt = &SignUpAttempt{WasSuccessful: false}
+		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+		return
+	}
+
+	if !userNameAndPasswordAreValid(su.Account.Password) {
+		fmt.Print("LET ME OUT")
 		//send back error msg and return False
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&SignUpAttempt{WasSuccessful: false})
+		attempt = &SignUpAttempt{WasSuccessful: false}
+		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+		return
 
 	}
+	fmt.Println("Don't think it got past this point")
+
 	var salt []byte
 	rand.Read(salt)
 	HashedPassword := argon2.IDKey([]byte(su.Account.Password), salt, Time, Memory, Threads, KeyLength)
 	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, HashedPassword, salt)
-	serverState.ListConnections.Connections[conn].Encoder.Encode(&LoginAttempt{WasSuccessful: true})
+	attempt = &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}
+	serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 
 }
-func (su *SignUpAttempt) ProcessClientPacket() {
+func (su *SignUpAttempt) ProcessClientPacket(sessionState *SessionState) {
+	if su.WasSuccessful {
+		sessionState.AuthenticationProcessDone = true
+		sessionState.ConnectionWrapper.Account = UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}
+
+	}
 
 }
-func (l *LoginAttempt) ProcessClientPacket() {
+func (l *LoginAttempt) ProcessClientPacket(sessionState *SessionState) {
+	if l.WasSuccessful {
+		sessionState.AuthenticationProcessDone = true
+		sessionState.ConnectionWrapper.Account = UserAccount{UserName: l.Account.UserName, Description: l.Account.Description}
+
+	}
 
 }

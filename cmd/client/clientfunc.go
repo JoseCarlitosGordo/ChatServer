@@ -26,10 +26,20 @@ func CommenceAuthenticationProcess(sessionState *extras.SessionState) error {
 	sessionState.InputScanner.Scan()
 	input := sessionState.InputScanner.Text()
 	if input == "1" {
-		return LoginProcess(sessionState)
+		err := LoginProcess(sessionState)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Signing in as %v", sessionState.ConnectionWrapper.Account.UserName)
+		return nil
 	}
 	if input == "2" {
-		return SignUpProcess(sessionState)
+		err := SignUpProcess(sessionState)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Signing in as %v", sessionState.ConnectionWrapper.Account.UserName)
+		return nil
 	}
 	fmt.Println("Logging in as Guest")
 	// err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj}})
@@ -46,7 +56,6 @@ func LoginProcess(sessionState *extras.SessionState) error {
 
 	// Create an encoder and target our buffer
 
-	var response *extras.LoginAttempt
 	for !sessionState.AuthenticationProcessDone {
 
 		fmt.Println("Logging in")
@@ -58,22 +67,17 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		sessionState.InputScanner.Scan()
 		password := sessionState.InputScanner.Text()
 
-		loginAttempt := extras.UserAccount{UserName: userName, Password: password}
+		var loginAttempt extras.Packet = &extras.LoginAttempt{Account: extras.UserAccount{UserName: userName, Password: password}}
 
 		//send login attempt over network
-		err := sessionState.Encoder.Encode(&extras.LoginAttempt{Account: loginAttempt})
+		err := sessionState.Encoder.Encode(&loginAttempt)
 		if err != nil {
 			return err
 		}
+		response := <-sessionState.PacketListener
+		response.ProcessClientPacket(sessionState)
 
-		serverResponse := <-sessionState.PacketListener
-		response = serverResponse.(*extras.LoginAttempt)
-		if response.WasSuccessful {
-			break
-		}
 	}
-	sessionState.AuthenticationProcessDone = true
-	sessionState.ConnectionWrapper.Account = response.Account
 	return nil
 
 	//TODO: read from buffer to check if username and password match what is found in the db. If it is found, return True.
@@ -84,9 +88,9 @@ func LoginProcess(sessionState *extras.SessionState) error {
 func SignUpProcess(sessionState *extras.SessionState) error {
 	//TODO: pass in connection, prompt user for user name and password, hash the password, salt it, return a valid connection object.
 	//This connection obj will contain user account and the tcp connection to the server, ensuring both client and server knows who it belongs to
-	var response *extras.SignUpAttempt
+
 	var accountCreation extras.UserAccount
-	for {
+	for !sessionState.AuthenticationProcessDone {
 		fmt.Println("Signup Process")
 		fmt.Print("What is your username? (must be unique)")
 		sessionState.InputScanner.Scan()
@@ -100,21 +104,17 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 		password := sessionState.InputScanner.Text()
 
 		accountCreation = extras.UserAccount{UserName: userName, Password: password, Description: description}
-
+		var signUpAttempt extras.Packet = &extras.SignUpAttempt{Account: accountCreation}
 		//send login attempt over network
-		err := sessionState.Encoder.Encode(&extras.SignUpAttempt{Account: accountCreation})
+		err := sessionState.Encoder.Encode(&signUpAttempt)
 		if err != nil {
 			return err
 		}
-		serverResponse := <-sessionState.PacketListener
-		response = serverResponse.(*extras.SignUpAttempt)
-		if response.WasSuccessful {
-			break
-		}
+		response := <-sessionState.PacketListener
+		response.ProcessClientPacket(sessionState)
 		fmt.Println("Your username and password pair are invalid, please try again")
 
 	}
-	sessionState.AuthenticationProcessDone = true
 	sessionState.ConnectionWrapper.Account = extras.UserAccount{UserName: accountCreation.UserName, Description: accountCreation.Description}
 	return nil
 }
