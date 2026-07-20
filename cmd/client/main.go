@@ -31,6 +31,7 @@ func receiveMessages(sessionState *extras.SessionState) {
 				continue
 			}
 		}
+		//fmt.Printf("Message Received: %+v \n", decodedPacket)
 		sessionState.PacketListener <- decodedPacket
 
 	}
@@ -46,14 +47,15 @@ func main() {
 		fmt.Printf("%s", err.Error())
 		return
 	}
+
 	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener, Decoder: gob.NewDecoder(conn), Encoder: gob.NewEncoder(conn), InputScanner: bufio.NewScanner(os.Stdin)}
 	go receiveMessages(&sessionState)
-	go processPackets(&sessionState)
 	err = CommenceAuthenticationProcess(&sessionState)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
 	}
+	go processPackets(&sessionState)
 
 	fmt.Println("\n(Type 'exit()' to close this app)")
 	fmt.Println("Type in your msg to send stuff to friends!")
@@ -66,8 +68,9 @@ func main() {
 			return
 		}
 		msgToSend.Account = sessionState.ConnectionWrapper.Account
+		var packet extras.Packet = msgToSend
 
-		err := sessionState.Encoder.Encode(msgToSend)
+		err := sessionState.Encoder.Encode(&packet)
 		if err != nil {
 			fmt.Printf("The server has stopped working unexpectedly...")
 			return

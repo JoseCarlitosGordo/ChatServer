@@ -193,6 +193,9 @@ func (su *SignUpAttempt) ProcessClientPacket(sessionState *SessionState) {
 		sessionState.AuthenticationProcessDone = true
 		sessionState.ConnectionWrapper.Account = UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}
 
+	} else {
+		fmt.Println("Your username and password pair are invalid, please try again")
+
 	}
 
 }

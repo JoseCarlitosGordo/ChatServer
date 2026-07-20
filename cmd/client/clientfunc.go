@@ -90,8 +90,8 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 	//This connection obj will contain user account and the tcp connection to the server, ensuring both client and server knows who it belongs to
 
 	var accountCreation extras.UserAccount
+	fmt.Println("Signup Process")
 	for !sessionState.AuthenticationProcessDone {
-		fmt.Println("Signup Process")
 		fmt.Print("What is your username? (must be unique)")
 		sessionState.InputScanner.Scan()
 		userName := sessionState.InputScanner.Text()
@@ -111,8 +111,8 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 			return err
 		}
 		response := <-sessionState.PacketListener
+		fmt.Println("This here")
 		response.ProcessClientPacket(sessionState)
-		fmt.Println("Your username and password pair are invalid, please try again")
 
 	}
 	sessionState.ConnectionWrapper.Account = extras.UserAccount{UserName: accountCreation.UserName, Description: accountCreation.Description}

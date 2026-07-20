@@ -67,9 +67,8 @@ func handleConnections(sender *extras.Connection, serverState *extras.Server) {
 	for {
 
 		var decodedPacket extras.Packet
-		//fmt.Printf("%v", sender.Decoder)
 		err := sender.Decoder.Decode(&decodedPacket)
-		fmt.Printf("Message Received: %+v \n", decodedPacket)
+		// fmt.Printf("Message Received: %+v \n", decodedPacket)
 		if err != nil {
 			fmt.Printf("Error decoding a packet: %v", err)
 			return
