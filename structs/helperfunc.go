@@ -37,10 +37,10 @@ func userNameAndPasswordAreValid(password string) bool {
 		return false
 
 	}
-	if !hasSpecialCharacter(password) {
-		return false
+	// if !hasSpecialCharacter(password) {
+	// 	return false
 
-	}
+	// }
 	if !hasUpperCase(password) {
 		return false
 

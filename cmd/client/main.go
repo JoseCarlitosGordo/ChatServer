@@ -81,14 +81,6 @@ func main() {
 
 func processPackets(sessionState *extras.SessionState) {
 	for newPacket := range sessionState.PacketListener {
-		// if newPacket.Type == "Message" && sessionState.AuthenticationProcessDone {
-		// 	//print out msg here
-		// switch t := newPacket.(type) {
-		// case *extras.Message:
-
-		// }
-
-		// }
 		newPacket.ProcessClientPacket(sessionState)
 	}
 }
