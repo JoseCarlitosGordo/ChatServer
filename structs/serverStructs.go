@@ -1,10 +1,9 @@
 package extras
 
 import (
-	"bytes"
 	"crypto/rand"
 	"database/sql"
-	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -26,11 +25,11 @@ type Packet interface {
 	ProcessClientPacket(sessionState *SessionState)
 }
 type UserAccount struct {
-	Id          int
-	UserName    string
-	Description string
-	Password    string
-	Salt        string
+	Id          int    `json:"id"`
+	UserName    string `json:"username"`
+	Description string `json:"description"`
+	Password    string `json:"password"`
+	Salt        string `json:"salt"`
 }
 type ConnectionList struct {
 	Key         sync.RWMutex
@@ -38,8 +37,8 @@ type ConnectionList struct {
 }
 
 type LoginAttempt struct {
-	WasSuccessful bool
-	Account       UserAccount
+	WasSuccessful bool        `json:"wasSuccessful"`
+	Account       UserAccount `json:"account"`
 }
 
 func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
@@ -85,8 +84,8 @@ func (l *LoginAttempt) ProcessClientPacket(sessionState *SessionState) {
 }
 
 type SignUpAttempt struct {
-	WasSuccessful bool
-	Account       UserAccount
+	WasSuccessful bool        `json:"wasSuccessful"`
+	Account       UserAccount `json:"account"`
 }
 
 // Checks username and password against security requirements to check if it passes.
@@ -145,8 +144,8 @@ func (su *SignUpAttempt) ProcessClientPacket(sessionState *SessionState) {
 
 // Message struct which accounts for the user that sent it and the contents of the msg
 type Message struct {
-	Text    string
-	Account UserAccount
+	Text    string      `json:"text"`
+	Account UserAccount `json:"account"`
 }
 
 // Sends messages to every connected user in the chat server
@@ -178,8 +177,8 @@ func (m *Message) ProcessClientPacket(sessionState *SessionState) {
 
 type Connection struct {
 	ConnectionObj net.Conn
-	Decoder       *gob.Decoder
-	Encoder       *gob.Encoder
+	Decoder       *json.Decoder
+	Encoder       *json.Encoder
 	Account       UserAccount
 }
 
@@ -202,5 +201,4 @@ type Server struct {
 	ListConnections *ConnectionList
 
 	Database *sql.DB
-	Buffer   *bytes.Buffer
 }

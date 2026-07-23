@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	extras "chatserver/structs"
-	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -48,7 +48,7 @@ func main() {
 		return
 	}
 
-	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener, Decoder: gob.NewDecoder(conn), Encoder: gob.NewEncoder(conn), InputScanner: bufio.NewScanner(os.Stdin)}
+	sessionState := extras.SessionState{ConnectionWrapper: extras.Connection{ConnectionObj: conn}, PacketListener: packetListener, Decoder: json.NewDecoder(conn), Encoder: json.NewEncoder(conn), InputScanner: bufio.NewScanner(os.Stdin)}
 	go receiveMessages(&sessionState)
 	err = CommenceAuthenticationProcess(&sessionState)
 	if err != nil {

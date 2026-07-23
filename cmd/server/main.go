@@ -3,7 +3,7 @@ package main
 import (
 	extras "chatserver/structs"
 	"database/sql"
-	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"net"
 
@@ -42,7 +42,7 @@ func main() {
 			fmt.Printf("Error Accepting Connection: %v", err.Error())
 			continue
 		}
-		newConnection := &extras.Connection{ConnectionObj: connection, Encoder: gob.NewEncoder(connection), Decoder: gob.NewDecoder(connection)}
+		newConnection := &extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
 
 		serverState.ListConnections.AddConnection(newConnection)
 		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
