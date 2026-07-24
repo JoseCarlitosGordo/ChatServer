@@ -67,7 +67,7 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		sessionState.InputScanner.Scan()
 		password := sessionState.InputScanner.Text()
 
-		var loginAttempt extras.Packet = &extras.LoginAttempt{Account: extras.UserAccount{UserName: userName, Password: password}}
+		var loginAttempt extras.Package = extras.Package{LoginAttempt: &extras.LoginAttempt{Account: extras.UserAccount{UserName: userName, Password: password}}}
 
 		//send login attempt over network
 		err := sessionState.Encoder.Encode(&loginAttempt)
@@ -104,7 +104,7 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 		password := sessionState.InputScanner.Text()
 
 		accountCreation = extras.UserAccount{UserName: userName, Password: password, Description: description}
-		var signUpAttempt extras.Packet = &extras.SignUpAttempt{Account: accountCreation}
+		var signUpAttempt extras.Package = extras.Package{SignupAttempt: &extras.SignUpAttempt{Account: accountCreation}}
 		//send login attempt over network
 		err := sessionState.Encoder.Encode(&signUpAttempt)
 		if err != nil {

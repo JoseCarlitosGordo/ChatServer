@@ -113,18 +113,18 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 
 	row := serverState.Database.QueryRow("SELECT 1 FROM Users WHERE username = ? LIMIT 1", su.Account.UserName)
 	var output int
-	var attempt Packet
+	var attempt Package
 
 	err := row.Scan(&output)
 	if err == nil {
-		attempt = &SignUpAttempt{WasSuccessful: false}
+		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 		return
 	}
 	fmt.Println("Don't think it got past this point")
 	if !errors.Is(err, sql.ErrNoRows) {
 		fmt.Printf("Error found while decoding sign up attempt: %s", err)
-		attempt = &SignUpAttempt{WasSuccessful: false}
+		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 		return
 	}
@@ -132,7 +132,7 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 	if !userNameAndPasswordAreValid(su.Account.Password) {
 		fmt.Print("LET ME OUT")
 		//send back error msg and return False
-		attempt = &SignUpAttempt{WasSuccessful: false}
+		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 		return
 
@@ -143,7 +143,7 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 	rand.Read(salt)
 	HashedPassword := argon2.IDKey([]byte(su.Account.Password), salt, Time, Memory, Threads, KeyLength)
 	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, HashedPassword, salt)
-	attempt = &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}
+	attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}}
 	serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 
 }

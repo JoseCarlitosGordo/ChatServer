@@ -65,10 +65,10 @@ func processPackets(conn net.Conn, serverState *extras.Server) {
 func handleConnections(sender *extras.Connection, serverState *extras.Server) {
 	defer serverState.ListConnections.RemoveConnection(sender)
 	for {
-		var packaging *extras.Package
+		var packaging extras.Package
 		var decodedPacket extras.Packet
 
-		err := sender.Decoder.Decode(packaging)
+		err := sender.Decoder.Decode(&packaging)
 		// fmt.Printf("Message Received: %+v \n", decodedPacket)
 		if err != nil {
 			fmt.Printf("Error decoding a packet: %v", err)

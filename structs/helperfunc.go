@@ -32,8 +32,8 @@ func hasLowerCase(s string) bool {
 }
 func userNameAndPasswordAreValid(password string) bool {
 
-	if utf8.RuneCountInString(password) < 16 {
-		//error
+	if utf8.RuneCountInString(password) < 8 {
+
 		return false
 
 	}
