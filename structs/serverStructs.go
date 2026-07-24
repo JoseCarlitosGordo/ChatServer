@@ -61,7 +61,6 @@ type LoginAttempt struct {
 }
 
 func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
-	//guest account edge case
 
 	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.Account.UserName)
 
@@ -83,12 +82,12 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 	if string(attemptHash) == results.Password {
 		//Send success message
 		serverState.ListConnections.Connections[conn].Account = results
-		var attempt Packet = &LoginAttempt{WasSuccessful: true, Account: UserAccount{UserName: results.UserName, Description: results.Description}}
+		var attempt Package = Package{LoginAttempt: &LoginAttempt{WasSuccessful: true, Account: UserAccount{UserName: results.UserName, Description: results.Description}}}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 
 	} else {
 
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&LoginAttempt{WasSuccessful: false})
+		serverState.ListConnections.Connections[conn].Encoder.Encode(Package{LoginAttempt: &LoginAttempt{WasSuccessful: false}})
 	}
 
 }
@@ -175,7 +174,7 @@ func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
 		// 	encoder := gob.NewEncoder(c)
 		// 	encoder.Encode(m)
 		// }(conn.Encoder)
-		var packet Packet = m
+		var packet Package = Package{Message: m}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&packet)
 
 	}
@@ -214,8 +213,7 @@ func (c *ConnectionList) RemoveConnection(connectionToRemove *Connection) {
 }
 
 type Server struct {
-	Listener net.Listener
-	//MsgChannel      chan string
+	Listener        net.Listener
 	MsgChannel      chan Packet
 	ListConnections *ConnectionList
 
