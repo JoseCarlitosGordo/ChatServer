@@ -35,6 +35,25 @@ type ConnectionList struct {
 	Key         sync.RWMutex
 	Connections map[net.Conn]*Connection
 }
+type Package struct {
+	LoginAttempt  *LoginAttempt  `json:"loginAttempt,omitempty"`
+	SignupAttempt *SignUpAttempt `json:"signupAttempt,omitempty"`
+	Message       *Message       `json:"message,omitempty"`
+}
+
+func (p *Package) ReconstructPacket() (Packet, error) {
+	if p.LoginAttempt != nil {
+		return &LoginAttempt{}, nil
+	}
+	if p.SignupAttempt != nil {
+		return &SignUpAttempt{}, nil
+	}
+	if p.Message != nil {
+		return &Message{}, nil
+	}
+	return nil, fmt.Errorf("Smth went wrong while reconstructing a packet")
+
+}
 
 type LoginAttempt struct {
 	WasSuccessful bool        `json:"wasSuccessful"`
