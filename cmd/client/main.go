@@ -18,11 +18,19 @@ func receiveMessages(sessionState *extras.SessionState) {
 		// fmt.Print("\033[1B")
 		// fmt.Printf("%v \n", string(msg))
 
+		var packaging *extras.Package
 		var decodedPacket extras.Packet
-		err := sessionState.Decoder.Decode(&decodedPacket)
+
+		err := sessionState.Decoder.Decode(packaging)
+		// fmt.Printf("Message Received: %+v \n", decodedPacket)
 		if err != nil {
 			fmt.Printf("Error decoding a packet: %v", err)
-
+			return
+		}
+		decodedPacket, err = packaging.ReconstructPacket()
+		if err != nil {
+			fmt.Printf("%v", err.Error())
+			return
 		}
 		//checks if authentication process isnt done and whether the decoded packet is a message
 		if !sessionState.AuthenticationProcessDone {

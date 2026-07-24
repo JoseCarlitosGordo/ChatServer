@@ -43,13 +43,13 @@ type Package struct {
 
 func (p *Package) ReconstructPacket() (Packet, error) {
 	if p.LoginAttempt != nil {
-		return &LoginAttempt{}, nil
+		return p.LoginAttempt, nil
 	}
 	if p.SignupAttempt != nil {
-		return &SignUpAttempt{}, nil
+		return p.SignupAttempt, nil
 	}
 	if p.Message != nil {
-		return &Message{}, nil
+		return p.Message, nil
 	}
 	return nil, fmt.Errorf("Smth went wrong while reconstructing a packet")
 
@@ -74,7 +74,7 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 		} else {
 			fmt.Printf("Error processing login attempt: %v", err)
 		}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&LoginAttempt{WasSuccessful: false})
+		serverState.ListConnections.Connections[conn].Encoder.Encode(&Package{LoginAttempt: &LoginAttempt{WasSuccessful: false}})
 		return
 	}
 
