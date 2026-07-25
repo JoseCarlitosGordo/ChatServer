@@ -1,22 +1,14 @@
 package extras
 
 import (
-	"crypto/rand"
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"sync"
-
-	"golang.org/x/crypto/argon2"
 )
-
-// Configuration Parameters (RFC 9106 Recommendation)
-var Time uint32 = 1           // Iterations over memory
-var Memory uint32 = 64 * 1024 // 64 MB of RAM
-var Threads uint8 = 4         // Parallelism (CPU threads)
-var KeyLength uint32 = 32     // Desired output key size
 
 // A Packet is any content that is sent from the Server to the Client or Vice Versa
 type Packet interface {
@@ -28,8 +20,8 @@ type UserAccount struct {
 	Id          int    `json:"id"`
 	UserName    string `json:"username"`
 	Description string `json:"description"`
-	Password    string `json:"password"`
-	Salt        string `json:"salt"`
+	Password    []byte `json:"password"`
+	Salt        []byte `json:"salt"`
 }
 type ConnectionList struct {
 	Key         sync.RWMutex
@@ -77,9 +69,7 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 		return
 	}
 
-	attemptHash := argon2.IDKey([]byte(l.Account.Password), []byte(results.Salt), Time, Memory, Threads, KeyLength)
-
-	if string(attemptHash) == results.Password {
+	if bytes.Equal(l.Account.Password, results.Password) {
 		//Send success message
 		serverState.ListConnections.Connections[conn].Account = results
 		var attempt Package = Package{LoginAttempt: &LoginAttempt{WasSuccessful: true, Account: UserAccount{UserName: results.UserName, Description: results.Description}}}
@@ -128,20 +118,8 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 		return
 	}
 
-	if !userNameAndPasswordAreValid(su.Account.Password) {
-		fmt.Print("LET ME OUT")
-		//send back error msg and return False
-		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
-		return
-
-	}
-
-	var salt []byte
-	rand.Read(salt)
-	HashedPassword := argon2.IDKey([]byte(su.Account.Password), salt, Time, Memory, Threads, KeyLength)
 	// fmt.Printf("%v, %v, %v", su.Account.Description, HashedPassword, salt)
-	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, HashedPassword, salt)
+	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, su.Account.Password, su.Account.Salt)
 	attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}}
 	serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 

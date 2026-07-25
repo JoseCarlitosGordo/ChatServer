@@ -21,7 +21,7 @@ func main() {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username TEXT NOT NULL UNIQUE,
 		description TEXT,
-		hashedPassword TEXT,
+		hashedPassword BLOB,
 		salt BLOB
 
 	)`)

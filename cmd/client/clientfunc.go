@@ -2,9 +2,17 @@ package main
 
 import (
 	extras "chatserver/structs"
+	"crypto/rand"
 	"fmt"
+
+	"golang.org/x/crypto/argon2"
 )
 
+// Configuration Parameters (RFC 9106 Recommendation)
+var Time uint32 = 1           // Iterations over memory
+var Memory uint32 = 64 * 1024 // 64 MB of RAM
+var Threads uint8 = 4         // Parallelism (CPU threads)
+var KeyLength uint32 = 32     // Desired output key size
 func sendMessage(sessionState *extras.SessionState) *extras.Message {
 
 	sessionState.InputScanner.Scan()
@@ -67,7 +75,11 @@ func LoginProcess(sessionState *extras.SessionState) error {
 		sessionState.InputScanner.Scan()
 		password := sessionState.InputScanner.Text()
 
-		var loginAttempt extras.Package = extras.Package{LoginAttempt: &extras.LoginAttempt{Account: extras.UserAccount{UserName: userName, Password: password}}}
+		var salt []byte
+		rand.Read(salt)
+		HashedPassword := argon2.IDKey([]byte(password), salt, Time, Memory, Threads, KeyLength)
+
+		var loginAttempt extras.Package = extras.Package{LoginAttempt: &extras.LoginAttempt{Account: extras.UserAccount{UserName: userName, Password: HashedPassword}}}
 
 		//send login attempt over network
 		err := sessionState.Encoder.Encode(&loginAttempt)
@@ -103,7 +115,17 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 		sessionState.InputScanner.Scan()
 		password := sessionState.InputScanner.Text()
 
-		accountCreation = extras.UserAccount{UserName: userName, Password: password, Description: description}
+		if !PasswordValid(password) {
+			fmt.Print("LET ME OUT")
+			//send back error msg and return False
+
+			continue
+
+		}
+		var salt []byte
+		rand.Read(salt)
+		HashedPassword := argon2.IDKey([]byte(password), salt, Time, Memory, Threads, KeyLength)
+		accountCreation = extras.UserAccount{UserName: userName, Password: HashedPassword, Description: description, Salt: salt}
 		var signUpAttempt extras.Package = extras.Package{SignupAttempt: &extras.SignUpAttempt{Account: accountCreation}}
 		//send login attempt over network
 		err := sessionState.Encoder.Encode(&signUpAttempt)
@@ -111,7 +133,7 @@ func SignUpProcess(sessionState *extras.SessionState) error {
 			return err
 		}
 		response := <-sessionState.PacketListener
-		fmt.Println("This here")
+
 		response.ProcessClientPacket(sessionState)
 
 	}

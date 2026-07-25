@@ -13,7 +13,7 @@ import (
 func main() {
 	//TODO: Remap connectionList so that each net.conn matches an extras.Connection Obj
 	//This is good for ensuring that encoders can be accessed easily in handleConnections
-	extras.RegisterEncodingDecodingTypes()
+
 	listConnections := &extras.ConnectionList{Connections: make(map[net.Conn]*extras.Connection)}
 
 	msgChannel := make(chan extras.Packet)
@@ -42,12 +42,12 @@ func main() {
 			fmt.Printf("Error Accepting Connection: %v", err.Error())
 			continue
 		}
-		newConnection := &extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
+		newConnection := extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
 
-		serverState.ListConnections.AddConnection(newConnection)
+		serverState.ListConnections.AddConnection(&newConnection)
 		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
 		go processPackets(connection, serverState)
-		go handleConnections(newConnection, serverState)
+		go handleConnections(&newConnection, serverState)
 
 	}
 
