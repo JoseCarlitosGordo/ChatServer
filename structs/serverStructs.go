@@ -140,7 +140,7 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 	var salt []byte
 	rand.Read(salt)
 	HashedPassword := argon2.IDKey([]byte(su.Account.Password), salt, Time, Memory, Threads, KeyLength)
-	fmt.Printf("%v, %v, %v", su.Account.Description, HashedPassword, salt)
+	// fmt.Printf("%v, %v, %v", su.Account.Description, HashedPassword, salt)
 	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, HashedPassword, salt)
 	attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}}
 	serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
@@ -181,12 +181,8 @@ func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
 
 // received msg is displayed to the terminal
 func (m *Message) ProcessClientPacket(sessionState *SessionState) {
-	if m.Account == (UserAccount{}) {
-		fmt.Printf("Guest: %s \n", m.Text)
 
-	} else {
-		fmt.Printf("%s: %s \n", m.Account.UserName, m.Text)
-	}
+	fmt.Printf("%s: %s \n", m.Account.UserName, m.Text)
 
 }
 
