@@ -63,10 +63,10 @@ type LoginAttempt struct {
 func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 
 	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.Account.UserName)
-
+	fmt.Printf("%v \n", row)
 	results := UserAccount{}
 
-	err := row.Scan(&results.Id, &results.UserName, &results.Password, &results.Description, &results.Password, &results.Salt)
+	err := row.Scan(&results.Id, &results.UserName, &results.Description, &results.Password, &results.Salt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			fmt.Printf("Username does not exist")
@@ -120,7 +120,7 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
 		return
 	}
-	fmt.Println("Don't think it got past this point")
+
 	if !errors.Is(err, sql.ErrNoRows) {
 		fmt.Printf("Error found while decoding sign up attempt: %s", err)
 		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
@@ -136,11 +136,11 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 		return
 
 	}
-	fmt.Println("Don't think it got past this point")
 
 	var salt []byte
 	rand.Read(salt)
 	HashedPassword := argon2.IDKey([]byte(su.Account.Password), salt, Time, Memory, Threads, KeyLength)
+	fmt.Printf("%v, %v, %v", su.Account.Description, HashedPassword, salt)
 	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, HashedPassword, salt)
 	attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}}
 	serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
@@ -170,10 +170,7 @@ type Message struct {
 func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
 	serverState.ListConnections.Key.Lock()
 	for conn := range serverState.ListConnections.Connections {
-		// go func(c net.Conn) {
-		// 	encoder := gob.NewEncoder(c)
-		// 	encoder.Encode(m)
-		// }(conn.Encoder)
+
 		var packet Package = Package{Message: m}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&packet)
 
@@ -185,10 +182,10 @@ func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
 // received msg is displayed to the terminal
 func (m *Message) ProcessClientPacket(sessionState *SessionState) {
 	if m.Account == (UserAccount{}) {
-		fmt.Printf("Guest: %s", m.Text)
+		fmt.Printf("Guest: %s \n", m.Text)
 
 	} else {
-		fmt.Printf("%s: %s", m.Account.UserName, m.Text)
+		fmt.Printf("%s: %s \n", m.Account.UserName, m.Text)
 	}
 
 }

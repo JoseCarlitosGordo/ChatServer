@@ -76,7 +76,7 @@ func main() {
 			return
 		}
 		msgToSend.Account = sessionState.ConnectionWrapper.Account
-		var packet extras.Packet = msgToSend
+		var packet extras.Package = extras.Package{Message: msgToSend}
 
 		err := sessionState.Encoder.Encode(&packet)
 		if err != nil {

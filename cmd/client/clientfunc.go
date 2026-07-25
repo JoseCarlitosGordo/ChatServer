@@ -55,10 +55,9 @@ func LoginProcess(sessionState *extras.SessionState) error {
 	//TODO: pass in connection, check for user account email and password on server and return a valid Connection Object\
 
 	// Create an encoder and target our buffer
-
+	fmt.Println("Login process")
 	for !sessionState.AuthenticationProcessDone {
 
-		fmt.Println("Logging in")
 		fmt.Print("Your username: ")
 		sessionState.InputScanner.Scan()
 		userName := sessionState.InputScanner.Text()
