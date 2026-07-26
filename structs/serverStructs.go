@@ -53,7 +53,8 @@ type LoginAttempt struct {
 }
 
 func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
-
+	serverState.ListConnections.Key.Lock()
+	defer serverState.ListConnections.Key.Unlock()
 	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.Account.UserName)
 	fmt.Printf("%v \n", row)
 	results := UserAccount{}
@@ -99,7 +100,8 @@ type SignUpAttempt struct {
 // Checks username and password against security requirements to check if it passes.
 // If it does, hash password with a random salt and store in sqlite db
 func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
-
+	serverState.ListConnections.Key.Lock()
+	defer serverState.ListConnections.Key.Unlock()
 	row := serverState.Database.QueryRow("SELECT 1 FROM Users WHERE username = ? LIMIT 1", su.Account.UserName)
 	var output int
 	var attempt Package
@@ -151,6 +153,7 @@ func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
 
 		var packet Package = Package{Message: m}
 		serverState.ListConnections.Connections[conn].Encoder.Encode(&packet)
+		fmt.Printf("Sending %v from %v", m.Text, m.Account.UserName)
 
 	}
 	serverState.ListConnections.Key.Unlock()

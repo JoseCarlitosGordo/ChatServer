@@ -16,7 +16,7 @@ func main() {
 
 	listConnections := &extras.ConnectionList{Connections: make(map[net.Conn]*extras.Connection)}
 
-	msgChannel := make(chan extras.Packet)
+	msgChannel := make(chan extras.Packet, 100)
 
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
@@ -43,7 +43,6 @@ func main() {
 			continue
 		}
 		newConnection := extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
-
 		serverState.ListConnections.AddConnection(&newConnection)
 		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
 		go processPackets(connection, serverState)
@@ -57,7 +56,9 @@ func main() {
 func processPackets(conn net.Conn, serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range serverState.MsgChannel {
+
 		newMsg.ProcessServerPacket(conn, serverState)
+		fmt.Printf("its going ere")
 	}
 }
 
@@ -69,7 +70,7 @@ func handleConnections(sender *extras.Connection, serverState *extras.Server) {
 		var decodedPacket extras.Packet
 
 		err := sender.Decoder.Decode(&packaging)
-		// fmt.Printf("Message Received: %+v \n", decodedPacket)
+
 		if err != nil {
 			fmt.Printf("Error decoding a packet: %v", err)
 			return
@@ -79,6 +80,7 @@ func handleConnections(sender *extras.Connection, serverState *extras.Server) {
 			fmt.Printf("%v", err.Error())
 			return
 		}
+		fmt.Printf("Message Received: %+v \n", decodedPacket)
 		//messages that are decoded are sent to a channel where the contents are processed
 		//Keep an eye on this code....
 		serverState.MsgChannel <- decodedPacket

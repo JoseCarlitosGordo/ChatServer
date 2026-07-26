@@ -75,6 +75,7 @@ func main() {
 			return
 		}
 		msgToSend.Account = sessionState.ConnectionWrapper.Account
+		fmt.Printf("Account: %v. Msg: %v\n ", msgToSend.Account, msgToSend.Text)
 		var packet extras.Package = extras.Package{Message: msgToSend}
 
 		err := sessionState.Encoder.Encode(&packet)

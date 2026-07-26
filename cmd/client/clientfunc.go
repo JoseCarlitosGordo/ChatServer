@@ -51,10 +51,7 @@ func CommenceAuthenticationProcess(sessionState *extras.SessionState) error {
 	}
 	fmt.Println("Logging in as Guest")
 	sessionState.ConnectionWrapper.Account = extras.UserAccount{UserName: "Guest"}
-	// err := sessionState.Encoder.Encode(extras.LoginAttempt{ConnectionWrapper: extras.Connection{ConnectionObj: sessionState.ConnectionWrapper.ConnectionObj}})
-	// if err != nil {
-	// 	return err
-	// }
+	sessionState.AuthenticationProcessDone = true
 
 	return nil
 
