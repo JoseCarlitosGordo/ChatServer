@@ -13,7 +13,7 @@ import (
 // A Packet is any content that is sent from the Server to the Client or Vice Versa
 type Packet interface {
 	//Packet functionality for chat server (broadcasting msgs, login processes, etc.)
-	ProcessServerPacket(conn net.Conn, serverState *Server)
+	ProcessServerPacket(conn *Connection, serverState *Server)
 	ProcessClientPacket(sessionState *SessionState)
 }
 type UserAccount struct {
@@ -52,7 +52,7 @@ type LoginAttempt struct {
 	Account       UserAccount `json:"account"`
 }
 
-func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
+func (l *LoginAttempt) ProcessServerPacket(conn *Connection, serverState *Server) {
 	serverState.ListConnections.Key.Lock()
 	defer serverState.ListConnections.Key.Unlock()
 	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.Account.UserName)
@@ -66,19 +66,19 @@ func (l *LoginAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
 		} else {
 			fmt.Printf("Error processing login attempt: %v", err)
 		}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&Package{LoginAttempt: &LoginAttempt{WasSuccessful: false}})
+		serverState.ListConnections.Connections[conn.ConnectionObj].Encoder.Encode(&Package{LoginAttempt: &LoginAttempt{WasSuccessful: false}})
 		return
 	}
 
 	if bytes.Equal(l.Account.Password, results.Password) {
 		//Send success message
-		serverState.ListConnections.Connections[conn].Account = results
+		serverState.ListConnections.Connections[conn.ConnectionObj].Account = results
 		var attempt Package = Package{LoginAttempt: &LoginAttempt{WasSuccessful: true, Account: UserAccount{UserName: results.UserName, Description: results.Description}}}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+		serverState.ListConnections.Connections[conn.ConnectionObj].Encoder.Encode(&attempt)
 
 	} else {
 
-		serverState.ListConnections.Connections[conn].Encoder.Encode(Package{LoginAttempt: &LoginAttempt{WasSuccessful: false}})
+		serverState.ListConnections.Connections[conn.ConnectionObj].Encoder.Encode(Package{LoginAttempt: &LoginAttempt{WasSuccessful: false}})
 	}
 
 }
@@ -99,7 +99,7 @@ type SignUpAttempt struct {
 
 // Checks username and password against security requirements to check if it passes.
 // If it does, hash password with a random salt and store in sqlite db
-func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server) {
+func (su *SignUpAttempt) ProcessServerPacket(conn *Connection, serverState *Server) {
 	serverState.ListConnections.Key.Lock()
 	defer serverState.ListConnections.Key.Unlock()
 	row := serverState.Database.QueryRow("SELECT 1 FROM Users WHERE username = ? LIMIT 1", su.Account.UserName)
@@ -109,21 +109,21 @@ func (su *SignUpAttempt) ProcessServerPacket(conn net.Conn, serverState *Server)
 	err := row.Scan(&output)
 	if err == nil {
 		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+		serverState.ListConnections.Connections[conn.ConnectionObj].Encoder.Encode(&attempt)
 		return
 	}
 
 	if !errors.Is(err, sql.ErrNoRows) {
 		fmt.Printf("Error found while decoding sign up attempt: %s", err)
 		attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: false}}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+		serverState.ListConnections.Connections[conn.ConnectionObj].Encoder.Encode(&attempt)
 		return
 	}
 
 	// fmt.Printf("%v, %v, %v", su.Account.Description, HashedPassword, salt)
 	serverState.Database.Exec("INSERT INTO Users(username, description, hashedpassword, salt) Values (?, ?, ?, ?)", su.Account.UserName, su.Account.Description, su.Account.Password, su.Account.Salt)
 	attempt = Package{SignupAttempt: &SignUpAttempt{WasSuccessful: true, Account: UserAccount{UserName: su.Account.UserName, Description: su.Account.Description}}}
-	serverState.ListConnections.Connections[conn].Encoder.Encode(&attempt)
+	serverState.ListConnections.Connections[conn.ConnectionObj].Encoder.Encode(&attempt)
 
 }
 
@@ -147,12 +147,16 @@ type Message struct {
 }
 
 // Sends messages to every connected user in the chat server
-func (m *Message) ProcessServerPacket(conn net.Conn, serverState *Server) {
+func (m *Message) ProcessServerPacket(conn *Connection, serverState *Server) {
 	serverState.ListConnections.Key.Lock()
-	for conn := range serverState.ListConnections.Connections {
+	for connection := range serverState.ListConnections.Connections {
+		if conn.ConnectionObj == connection {
+			m.Account.UserName += " (Me)"
+
+		}
 
 		var packet Package = Package{Message: m}
-		serverState.ListConnections.Connections[conn].Encoder.Encode(&packet)
+		serverState.ListConnections.Connections[connection].Encoder.Encode(&packet)
 		fmt.Printf("Sending %v from %v", m.Text, m.Account.UserName)
 
 	}

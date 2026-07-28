@@ -45,7 +45,7 @@ func main() {
 		newConnection := extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
 		serverState.ListConnections.AddConnection(&newConnection)
 		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
-		go processPackets(connection, serverState)
+		go processPackets(&newConnection, serverState)
 		go handleConnections(&newConnection, serverState)
 
 	}
@@ -53,12 +53,11 @@ func main() {
 }
 
 // Receives messages from a msg channel and sends them over.
-func processPackets(conn net.Conn, serverState *extras.Server) {
+func processPackets(conn *extras.Connection, serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range serverState.MsgChannel {
 
 		newMsg.ProcessServerPacket(conn, serverState)
-		fmt.Printf("its going ere")
 	}
 }
 
