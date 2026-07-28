@@ -16,6 +16,10 @@ type Packet interface {
 	ProcessServerPacket(conn *Connection, serverState *Server)
 	ProcessClientPacket(sessionState *SessionState)
 }
+type InboundMessage struct {
+	Packet Packet
+	Sender Connection
+}
 type UserAccount struct {
 	Id          int    `json:"id"`
 	UserName    string `json:"username"`
@@ -56,7 +60,6 @@ func (l *LoginAttempt) ProcessServerPacket(conn *Connection, serverState *Server
 	serverState.ListConnections.Key.Lock()
 	defer serverState.ListConnections.Key.Unlock()
 	row := serverState.Database.QueryRow("SELECT * FROM Users WHERE username = ?", l.Account.UserName)
-	fmt.Printf("%v \n", row)
 	results := UserAccount{}
 
 	err := row.Scan(&results.Id, &results.UserName, &results.Description, &results.Password, &results.Salt)
@@ -157,7 +160,6 @@ func (m *Message) ProcessServerPacket(conn *Connection, serverState *Server) {
 
 		var packet Package = Package{Message: m}
 		serverState.ListConnections.Connections[connection].Encoder.Encode(&packet)
-		fmt.Printf("Sending %v from %v", m.Text, m.Account.UserName)
 
 	}
 	serverState.ListConnections.Key.Unlock()
@@ -188,11 +190,14 @@ func (c *ConnectionList) RemoveConnection(connectionToRemove *Connection) {
 	c.Key.Lock()
 	defer c.Key.Unlock()
 	delete(c.Connections, connectionToRemove.ConnectionObj)
+	fmt.Println("it has been deleted")
 }
 
 type Server struct {
-	Listener        net.Listener
-	MsgChannel      chan Packet
+	Listener net.Listener
+	// MsgChannel      chan Packet
+	MsgChannel chan InboundMessage
+
 	ListConnections *ConnectionList
 
 	Database *sql.DB

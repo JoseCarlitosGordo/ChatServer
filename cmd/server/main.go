@@ -16,8 +16,8 @@ func main() {
 
 	listConnections := &extras.ConnectionList{Connections: make(map[net.Conn]*extras.Connection)}
 
-	msgChannel := make(chan extras.Packet, 100)
-
+	// msgChannel := make(chan extras.Packet, 100)
+	msgChannel := make(chan extras.InboundMessage)
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		fmt.Printf("%s", err.Error())
@@ -35,6 +35,7 @@ func main() {
 	defer dbConnection.Close()
 
 	//Separate goroutine for msg sending. ListConnections is updated automatically.
+	go processPackets(serverState)
 	for {
 		//Listen for a speciic connection. If no other connection comes it just waits forever.
 		connection, err := listener.Accept()
@@ -42,22 +43,22 @@ func main() {
 			fmt.Printf("Error Accepting Connection: %v", err.Error())
 			continue
 		}
-		newConnection := extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
-		serverState.ListConnections.AddConnection(&newConnection)
+		newConnection := &extras.Connection{ConnectionObj: connection, Encoder: json.NewEncoder(connection), Decoder: json.NewDecoder(connection)}
+		serverState.ListConnections.AddConnection(newConnection)
 		//A new goroutine is started for the specific connection. This connection constantly reads the connection for messages sent
-		go processPackets(&newConnection, serverState)
-		go handleConnections(&newConnection, serverState)
+		go handleConnections(newConnection, serverState)
 
 	}
 
 }
 
 // Receives messages from a msg channel and sends them over.
-func processPackets(conn *extras.Connection, serverState *extras.Server) {
+func processPackets(serverState *extras.Server) {
 	//loops over values in the channel until the channel is closed
 	for newMsg := range serverState.MsgChannel {
 
-		newMsg.ProcessServerPacket(conn, serverState)
+		newMsg.Packet.ProcessServerPacket(&newMsg.Sender, serverState)
+
 	}
 }
 
@@ -79,10 +80,9 @@ func handleConnections(sender *extras.Connection, serverState *extras.Server) {
 			fmt.Printf("%v", err.Error())
 			return
 		}
-		fmt.Printf("Message Received: %+v \n", decodedPacket)
 		//messages that are decoded are sent to a channel where the contents are processed
 		//Keep an eye on this code....
-		serverState.MsgChannel <- decodedPacket
+		serverState.MsgChannel <- extras.InboundMessage{Packet: decodedPacket, Sender: *sender}
 
 	}
 
