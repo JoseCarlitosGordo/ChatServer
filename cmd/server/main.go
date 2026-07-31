@@ -18,7 +18,7 @@ func main() {
 
 	// msgChannel := make(chan extras.Packet, 100)
 	msgChannel := make(chan extras.InboundMessage)
-	listener, err := net.Listen("tcp", "169.254.160.204:8080")
+	listener, err := net.Listen("tcp", "202:960c:a87:2609:9ec0:29f8:e21d:690a:8080")
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
