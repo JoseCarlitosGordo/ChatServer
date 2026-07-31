@@ -48,7 +48,7 @@ func receiveMessages(sessionState *extras.SessionState) {
 func main() {
 	//send over the tcp protocol
 
-	conn, err := net.Dial("tcp", "localhost:8080")
+	conn, err := net.Dial("tcp", "169.254.160.204:8080")
 	packetListener := make(chan extras.Packet)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
