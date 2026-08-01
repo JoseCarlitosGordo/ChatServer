@@ -23,6 +23,6 @@ Peers: [
 ```
 
 ## How to Install
-1. Download the client executable file
+1. Download the client executable file [here] (https://github.com/JoseCarlitosGordo/ChatServer/releases/tag/v0.5.0)
 2. Run it
 3. Enjoy!
