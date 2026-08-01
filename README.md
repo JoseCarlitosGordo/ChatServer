@@ -6,13 +6,15 @@ During my time at University I learnt how to
 ## Prerequisites
 - An installation of [Yggdrasil] (https://yggdrasil-network.github.io/installation.html) is needed to run this application.
     - Once downloaded, users need to run the installer and  add the following ip address as a peer to a file in ProgramFiles/Yggdrasil/yggdrasil.conf: 202:960c:a87:2609:9ec0:29f8:e21d:690a
-[!NOTE]
-`Peers: [
+    - The peers list looks like this:
+```
+Peers: [
   tcp://a.b.c.d:e
   tls://d.c.b.a:e
   tcp://[a:b:c::d]:e
   tls://[d:c:b::a]:e
-]`
+]
+```
 ## How to Install
 1. Clone repository to your local machine
 2. run the following command to download all dependencies and create a virtual environment:
