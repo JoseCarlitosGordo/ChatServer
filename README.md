@@ -1,10 +1,16 @@
-# Chip-8
-Chip-8 emulator that can run chip-8 applications through the command line
+# Chat Server
+A Go Chat Server that can receive and distribute network packets concurrently to broadcast messages and handle authentication.
 
-During my time at University I learnt how to 
-# Quick Start
+During my time at University I learnt about networking protocols and security terminology such as TCP and Password Salting at a high, abstract level. While I thought this was useful info, I was 
+unsure how to implement this practically in my own systems. This project was the outcome of me putting my theoretical knowledge to the test and applying it in a meaningful way.
+
+## Cool features
+- Concurrency through goroutines allow multiple connections and network packets to be handled simultaneously, allowing for optimal performance
+- Authentication features for this prototype include password salting, sign up, login and database storage in SQLite
+- Message broadcasting allows every connected user to receive the exact same msgs in the same order.
+
 ## Prerequisites
-- An installation of [Yggdrasil] (https://yggdrasil-network.github.io/installation.html) is needed to run this application.
+- An installation of [Yggdrasil] (https://yggdrasil-network.github.io/installation.html) is needed to run this application. Without it, the client cannot connect to the backend server.
     - Once downloaded, users need to run the installer and  add the following ip address as a peer to a file in ProgramFiles/Yggdrasil/yggdrasil.conf: 202:960c:a87:2609:9ec0:29f8:e21d:690a
     - The peers list looks like this:
 ```
@@ -15,16 +21,8 @@ Peers: [
   tls://[d:c:b::a]:e
 ]
 ```
-## How to Install
-1. Clone repository to your local machine
-2. run the following command to download all dependencies and create a virtual environment:
-`uv sync`
-3. if your IDE does not automatically activate the venv, run `source .venv/bin.activate` in the project directory
-## Command to run a application
-`python3 main.py {path of chip-8 application here} 0`
-- NOTE: the 0 represents a configurable opcode for 8xy6 and 8xye. It shouldn't affect most applications but just in case
-- It is considered best practice (FOR THIS PROJECT) to keep the chip-8 application in the same relative path as the project for easy access
-## Example Command
-`python3 main.py Invaders.ch8 0`
 
-Within this repository are multiple chip 8 applications. Feel free to mess around with them!
+## How to Install
+1. Download the client executable file
+2. Run it
+3. Enjoy!
