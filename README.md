@@ -10,7 +10,7 @@ unsure how to implement this practically in my own systems. This project was the
 - Message broadcasting allows every connected user to receive the exact same msgs in the same order.
 
 ## Prerequisites
-- An installation of [Yggdrasil] (https://yggdrasil-network.github.io/installation.html) is needed to run this application. Without it, the client cannot connect to the backend server.
+- An installation of [Yggdrasil](https://yggdrasil-network.github.io/installation.html) is needed to run this application. Without it, the client cannot connect to the backend server.
     - Once downloaded, users need to run the installer and  add the following ip address as a peer to a file in ProgramFiles/Yggdrasil/yggdrasil.conf: 202:960c:a87:2609:9ec0:29f8:e21d:690a
     - The peers list looks like this:
 ```
@@ -23,6 +23,6 @@ Peers: [
 ```
 
 ## How to Install
-1. Download the client executable file [here] (https://github.com/JoseCarlitosGordo/ChatServer/releases/tag/v0.5.0)
+1. Download the client executable file [here](https://github.com/JoseCarlitosGordo/ChatServer/releases/tag/v0.5.0)
 2. Run it
 3. Enjoy!
